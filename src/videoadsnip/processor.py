@@ -1,6 +1,7 @@
 """Video processing utilities using ffmpeg."""
 
 import subprocess
+import tempfile
 from pathlib import Path
 
 import ffmpeg
@@ -18,30 +19,209 @@ class VideoProcessor:
         """
         self.ffmpeg_path = ffmpeg_path
 
-    def cut_segment(
+    def _get_keyframe_times(self, video_path: Path) -> list[float]:
+        """
+        Get all keyframe timestamps from a video file.
+
+        Args:
+            video_path: Path to video file
+
+        Returns:
+            List of keyframe timestamps in seconds
+        """
+        probe = ffmpeg.probe(
+            str(video_path),
+            select_streams="v",
+            show_entries="packet=pts_time,flags",
+            print_format="json",
+        )
+
+        keyframes = []
+        for packet in probe.get("packets", []):
+            flags = packet.get("flags", "")
+            if "K" in flags:  # K indicates keyframe
+                pts_time = packet.get("pts_time")
+                if pts_time is not None:
+                    keyframes.append(float(pts_time))
+
+        return sorted(keyframes)
+
+    def _find_next_keyframe(self, keyframes: list[float], time: float) -> float | None:
+        """
+        Find the first keyframe at or after the given time.
+
+        Args:
+            keyframes: List of keyframe timestamps
+            time: Target time
+
+        Returns:
+            Keyframe time or None if not found
+        """
+        for kf in keyframes:
+            if kf >= time:
+                return kf
+        return None
+
+    def _is_at_keyframe(self, keyframes: list[float], time: float, tolerance: float = 0.001) -> bool:
+        """Check if a time is exactly at a keyframe."""
+        for kf in keyframes:
+            if abs(kf - time) < tolerance:
+                return True
+        return False
+
+    def _get_video_encoding_params(self, video_path: Path) -> dict:
+        """Get encoding parameters from video for re-encoding."""
+        probe = ffmpeg.probe(str(video_path))
+        video_stream = None
+        audio_stream = None
+
+        for stream in probe["streams"]:
+            if stream["codec_type"] == "video" and video_stream is None:
+                video_stream = stream
+            elif stream["codec_type"] == "audio" and audio_stream is None:
+                audio_stream = stream
+
+        params = {
+            "vcodec": video_stream.get("codec_name", "libx264") if video_stream else "libx264",
+            "acodec": audio_stream.get("codec_name", "aac") if audio_stream else "aac",
+        }
+
+        # Get video encoding details if available
+        if video_stream:
+            if "pix_fmt" in video_stream:
+                params["pix_fmt"] = video_stream["pix_fmt"]
+            if "width" in video_stream and "height" in video_stream:
+                params["s"] = f"{video_stream['width']}x{video_stream['height']}"
+
+        # Try to match original bitrate if available
+        if video_stream and "bit_rate" in video_stream:
+            try:
+                params["video_bitrate"] = int(video_stream["bit_rate"])
+            except (ValueError, TypeError):
+                pass
+
+        return params
+
+    def _smart_cut_segment(
         self,
         input_path: Path,
         output_path: Path,
         start_time: float,
         end_time: float,
+        keyframes: list[float],
+        encoding_params: dict,
     ) -> None:
         """
-        Cut a segment from a video.
+        Cut a segment using smart encoding - only re-encode the partial GOP at start.
 
         Args:
-            input_path: Input video file path
-            output_path: Output video file path
+            input_path: Input video path
+            output_path: Output path
             start_time: Start time in seconds
             end_time: End time in seconds
+            keyframes: List of keyframe timestamps
+            encoding_params: Video encoding parameters
         """
-        duration = end_time - start_time
+        temp_dir = Path(tempfile.mkdtemp(prefix="videoadsnip_smart_"))
+        segment_files = []
 
-        (
-            ffmpeg.input(str(input_path), ss=start_time, t=duration)
-            .output(str(output_path), codec="copy")
-            .overwrite_output()
-            .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
-        )
+        try:
+            # Check if start is exactly at a keyframe
+            if self._is_at_keyframe(keyframes, start_time):
+                # Perfect! Just stream copy the whole segment
+                duration = end_time - start_time
+                (
+                    ffmpeg.input(str(input_path), ss=start_time, t=duration)
+                    .output(str(output_path), codec="copy")
+                    .overwrite_output()
+                    .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
+                )
+                return
+
+            # Find the next keyframe after start_time
+            next_kf = self._find_next_keyframe(keyframes, start_time)
+
+            if next_kf is None or next_kf >= end_time:
+                # No keyframe in range, or segment is shorter than one GOP
+                # Re-encode the entire segment
+                duration = end_time - start_time
+                (
+                    ffmpeg.input(str(input_path), ss=start_time)
+                    .output(
+                        str(output_path),
+                        t=duration,
+                        vcodec=encoding_params.get("vcodec", "libx264"),
+                        acodec=encoding_params.get("acodec", "aac"),
+                    )
+                    .overwrite_output()
+                    .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
+                )
+                return
+
+            # Smart cut: re-encode from start to next keyframe, then stream copy
+            # Part 1: Re-encode partial GOP (start_time to next_kf)
+            partial_duration = next_kf - start_time
+            partial_file = temp_dir / "partial.ts"
+            (
+                ffmpeg.input(str(input_path), ss=start_time)
+                .output(
+                    str(partial_file),
+                    t=partial_duration,
+                    format="mpegts",
+                    vcodec=encoding_params.get("vcodec", "libx264"),
+                    acodec=encoding_params.get("acodec", "aac"),
+                )
+                .overwrite_output()
+                .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
+            )
+            segment_files.append(partial_file)
+
+            # Part 2: Stream copy from next keyframe to end (if there's content left)
+            if next_kf < end_time:
+                copy_duration = end_time - next_kf
+                copy_file = temp_dir / "copy.ts"
+                (
+                    ffmpeg.input(str(input_path), ss=next_kf, t=copy_duration)
+                    .output(str(copy_file), format="mpegts", codec="copy")
+                    .overwrite_output()
+                    .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
+                )
+                segment_files.append(copy_file)
+
+            # Concatenate parts
+            if len(segment_files) == 1:
+                # Only the partial re-encoded part
+                segment_files[0].rename(output_path)
+            else:
+                # Concatenate partial + copy
+                self._concatenate_ts_files(segment_files, output_path)
+
+        finally:
+            # Cleanup temp files
+            for f in segment_files:
+                f.unlink(missing_ok=True)
+            try:
+                temp_dir.rmdir()
+            except OSError:
+                pass
+
+    def _concatenate_ts_files(self, ts_files: list[Path], output_path: Path) -> None:
+        """Concatenate TS files using concat protocol."""
+        concat_file = Path(tempfile.mktemp(suffix=".txt", prefix="concat_"))
+
+        try:
+            with open(concat_file, "w") as f:
+                for ts_file in ts_files:
+                    f.write(f"file '{ts_file.absolute()}'\n")
+
+            (
+                ffmpeg.input(str(concat_file), format="concat", safe=0)
+                .output(str(output_path), codec="copy")
+                .overwrite_output()
+                .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
+            )
+        finally:
+            concat_file.unlink(missing_ok=True)
 
     def remove_segments(
         self,
@@ -50,9 +230,9 @@ class VideoProcessor:
         segments: list[tuple[float, float]],
     ) -> None:
         """
-        Remove multiple segments from a video.
+        Remove multiple segments from a video using smart encoding.
 
-        This method extracts all non-ad segments and concatenates them.
+        Only re-encodes partial GOPs at cut points, uses stream copy elsewhere.
 
         Args:
             input_path: Input video file path
@@ -69,15 +249,39 @@ class VideoProcessor:
         if not keep_segments:
             raise ValueError("No segments to keep after removing ads")
 
+        # Get keyframe positions for smart cutting
+        keyframes = self._get_keyframe_times(input_path)
+
+        # Get encoding params to match original video
+        encoding_params = self._get_video_encoding_params(input_path)
+
         if len(keep_segments) == 1:
-            # Simple case: just cut to the single segment
+            # Single segment: use smart cut directly to output
             start, end = keep_segments[0]
-            self.cut_segment(input_path, output_path, start, end)
+            self._smart_cut_segment(input_path, output_path, start, end, keyframes, encoding_params)
             return
 
-        # Multiple segments: create temporary files and concatenate
-        temp_files = self._extract_segments_to_temp(input_path, keep_segments)
-        self._concatenate_segments(temp_files, output_path)
+        # Multiple segments: extract each with smart cut, then concatenate
+        temp_dir = Path(tempfile.mkdtemp(prefix="videoadsnip_segments_"))
+        segment_files = []
+
+        try:
+            for i, (start, end) in enumerate(keep_segments):
+                seg_file = temp_dir / f"segment_{i:03d}.ts"
+                self._smart_cut_segment(input_path, seg_file, start, end, keyframes, encoding_params)
+                segment_files.append(seg_file)
+
+            # Concatenate all segments
+            self._concatenate_ts_files(segment_files, output_path)
+
+        finally:
+            # Cleanup
+            for f in segment_files:
+                f.unlink(missing_ok=True)
+            try:
+                temp_dir.rmdir()
+            except OSError:
+                pass
 
     def _get_duration(self, video_path: Path) -> float:
         """Get the duration of a video file in seconds."""
@@ -114,84 +318,6 @@ class VideoProcessor:
             keep_segments.append((current_pos, total_duration))
 
         return keep_segments
-
-    def _extract_segments_to_temp(
-        self,
-        input_path: Path,
-        segments: list[tuple[float, float]],
-    ) -> list[Path]:
-        """
-        Extract segments to temporary files.
-
-        Args:
-            input_path: Input video path
-            segments: Segments to extract (start, end)
-
-        Returns:
-            List of paths to temporary segment files
-        """
-        import tempfile
-
-        temp_dir = Path(tempfile.mkdtemp(prefix="videoadsnip_"))
-        temp_files: list[Path] = []
-
-        for i, (start, end) in enumerate(segments):
-            temp_file = temp_dir / f"segment_{i:03d}.ts"  # Use .ts for concatenation
-            duration = end - start
-
-            (
-                ffmpeg.input(str(input_path), ss=start, t=duration)
-                .output(
-                    str(temp_file),
-                    format="mpegts",
-                    vcodec="libx264",
-                    acodec="aac",
-                )
-                .overwrite_output()
-                .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
-            )
-            temp_files.append(temp_file)
-
-        return temp_files
-
-    def _concatenate_segments(
-        self,
-        segment_files: list[Path],
-        output_path: Path,
-    ) -> None:
-        """
-        Concatenate multiple video segments into one file.
-
-        Args:
-            segment_files: List of paths to segment files
-            output_path: Output file path
-        """
-        # Create concat file for ffmpeg
-        import tempfile
-
-        concat_file = Path(tempfile.mktemp(suffix=".txt", prefix="concat_"))
-
-        with open(concat_file, "w") as f:
-            for seg_file in segment_files:
-                f.write(f"file '{seg_file.absolute()}'\n")
-
-        try:
-            (
-                ffmpeg.input(str(concat_file), format="concat", safe=0)
-                .output(str(output_path), vcodec="copy", acodec="copy")
-                .overwrite_output()
-                .run(cmd=self.ffmpeg_path, capture_stdout=True, capture_stderr=True)
-            )
-        finally:
-            # Cleanup
-            concat_file.unlink(missing_ok=True)
-            for seg_file in segment_files:
-                seg_file.unlink(missing_ok=True)
-                # Also try to remove parent dir if empty
-                try:
-                    seg_file.parent.rmdir()
-                except OSError:
-                    pass
 
     def get_video_info(self, video_path: Path) -> dict:
         """

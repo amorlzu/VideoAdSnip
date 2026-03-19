@@ -91,6 +91,39 @@ videoadsnip "path/to/video.mp4" --no-ui
 4. **Selection**: Click on scenes that are advertisements
 5. **Processing**: Uses FFmpeg to remove selected segments and create a clean video
 
+### Smart Encoding (Frame-Accurate Cuts)
+
+VideoAdSnip uses a smart encoding approach that achieves frame-accurate cuts while minimizing re-encoding:
+
+```
+For each segment to keep (start_time → end_time):
+
+┌─────────────────────────────────────────────────────────────┐
+│  Original video                                             │
+│  ├─keyframe─┼───────┼─keyframe─┼───────┼─keyframe─┼───────┤ │
+│                        ↑                                    │
+│                    start_time                               │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  Smart cut result:                                          │
+│  ├─ Re-encode ─┤├──────── Stream Copy ────────────────────┤ │
+│  (partial GOP)     (from next keyframe to end_time)         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**How it works:**
+1. **Keyframe Detection**: Analyzes the video to find all keyframe (I-frame) positions
+2. **Partial Re-encoding**: Only re-encodes from the cut point to the next keyframe (typically 1-2 seconds)
+3. **Stream Copy**: Uses direct stream copy for content between keyframes (fast, no quality loss)
+4. **Codec Matching**: Detects and matches the original codec (H.264, HEVC, AAC, etc.) for seamless concatenation
+
+**Benefits:**
+- ✅ Frame-accurate cuts (no extra frames from removed scenes)
+- ✅ Fast processing (minimal re-encoding)
+- ✅ Preserves original quality (stream copy for most content)
+- ✅ Works with any codec supported by FFmpeg
+
 ## Output
 
 Processed videos are saved with a `_clean` suffix appended to the original filename:

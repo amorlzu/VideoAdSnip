@@ -1,5 +1,6 @@
 """Flask web application for VideoAdSnip scene selection UI."""
 
+import hashlib
 import tempfile
 from pathlib import Path
 
@@ -12,10 +13,16 @@ app = Flask(__name__)
 
 # Global state
 video_files: list[Path] = []
-current_video: Path | None = None
-video_scenes: dict[str, list[Scene]] = {}
-video_thumbnails: dict[str, Path] = {}
+current_video_hash: str | None = None
+video_hashes: dict[str, Path] = {}  # hash -> Path mapping
+video_scenes: dict[str, list[Scene]] = {}  # hash -> scenes
+video_thumbnails: dict[str, Path] = {}  # hash -> thumbnail dir
 max_duration: float = 120.0
+
+
+def get_video_hash(video_path: Path) -> str:
+    """Generate a short hash for a video file path."""
+    return hashlib.md5(str(video_path).encode('utf-8')).hexdigest()[:12]
 
 
 def init_app_with_videos(files: list[Path], duration: float | None = None) -> None:
@@ -26,7 +33,7 @@ def init_app_with_videos(files: list[Path], duration: float | None = None) -> No
         files: List of video file paths
         duration: Maximum duration to analyze per video
     """
-    global video_files, current_video, video_scenes, video_thumbnails, max_duration
+    global video_files, current_video_hash, video_hashes, video_scenes, video_thumbnails, max_duration
 
     video_files = files
     max_duration = duration or 120.0
@@ -34,22 +41,25 @@ def init_app_with_videos(files: list[Path], duration: float | None = None) -> No
     # Detect scenes for all videos
     scene_detector = SceneDetector()
     for video_file in files:
-        video_id = str(video_file)
+        video_hash = get_video_hash(video_file)
+        video_hashes[video_hash] = video_file
+
         detection_result = scene_detector.detect(
             video_file,
             start_time=0.0,
             end_time=max_duration,
         )
-        video_scenes[video_id] = detection_result.scenes
 
-        # Extract thumbnails
+        # Extract thumbnails and update scenes with thumbnail paths
         thumbnail_dir = Path(tempfile.mkdtemp(prefix=f"videoadsnip_thumbs_"))
-        scene_detector.extract_thumbnails(video_file, detection_result.scenes, thumbnail_dir)
-        video_thumbnails[video_id] = thumbnail_dir
+        updated_scenes = scene_detector.extract_thumbnails(video_file, detection_result.scenes, thumbnail_dir)
+
+        video_scenes[video_hash] = updated_scenes
+        video_thumbnails[video_hash] = thumbnail_dir
 
     # Set first video as current
     if files:
-        current_video = files[0]
+        current_video_hash = get_video_hash(files[0])
 
 
 @app.route("/")
@@ -63,47 +73,46 @@ def get_videos() -> Response:
     """Get list of available videos."""
     videos_data = []
     for vf in video_files:
-        video_id = str(vf)
+        video_hash = get_video_hash(vf)
         processor = VideoProcessor()
         try:
             info = processor.get_video_info(vf)
             videos_data.append({
-                "id": video_id,
+                "id": video_hash,
                 "name": vf.name,
                 "path": str(vf),
                 "duration": info["duration"],
                 "resolution": f"{info['video']['width']}x{info['video']['height']}",
-                "scene_count": len(video_scenes.get(video_id, [])),
+                "scene_count": len(video_scenes.get(video_hash, [])),
             })
         except Exception:
             videos_data.append({
-                "id": video_id,
+                "id": video_hash,
                 "name": vf.name,
                 "path": str(vf),
                 "error": True,
             })
-    return jsonify({"videos": videos_data, "current": str(current_video) if current_video else None})
+    return jsonify({"videos": videos_data, "current": current_video_hash})
 
 
-@app.route("/api/select/<path:video_id>", methods=["POST"])
-def select_video(video_id: str) -> Response:
+@app.route("/api/select/<video_hash>", methods=["POST"])
+def select_video(video_hash: str) -> Response:
     """Select a video to work with."""
-    global current_video
-    video_path = Path(video_id)
-    if video_path not in video_files:
+    global current_video_hash
+    if video_hash not in video_hashes:
         return jsonify({"error": "Video not found"}), 404
-    current_video = video_path
-    return jsonify({"success": True, "video": video_id})
+    current_video_hash = video_hash
+    return jsonify({"success": True, "video": video_hash})
 
 
 @app.route("/api/scenes")
 def get_scenes() -> Response:
     """Get detected scenes as JSON."""
-    if not current_video:
+    if not current_video_hash:
         return jsonify({"error": "No video selected"}), 400
 
-    video_id = str(current_video)
-    scenes = video_scenes.get(video_id, [])
+    video_path = video_hashes.get(current_video_hash)
+    scenes = video_scenes.get(current_video_hash, [])
 
     scenes_data = []
     for scene in scenes:
@@ -116,24 +125,24 @@ def get_scenes() -> Response:
             "duration": scene.duration,
         }
         if scene.thumbnail_path:
-            scene_dict["thumbnail_url"] = f"/thumbnails/{video_id}/{scene.index}"
+            scene_dict["thumbnail_url"] = f"/thumbnails/{current_video_hash}/{scene.index}"
         scenes_data.append(scene_dict)
 
     processor = VideoProcessor()
-    info = processor.get_video_info(current_video)
+    info = processor.get_video_info(video_path)
 
     return jsonify({
         "scenes": scenes_data,
-        "video_path": str(current_video),
-        "video_name": current_video.name,
+        "video_path": str(video_path),
+        "video_name": video_path.name,
         "duration": info["duration"],
     })
 
 
-@app.route("/thumbnails/<path:video_id>/<int:scene_index>")
-def get_thumbnail(video_id: str, scene_index: int) -> Response:
+@app.route("/thumbnails/<video_hash>/<int:scene_index>")
+def get_thumbnail(video_hash: str, scene_index: int) -> Response:
     """Serve a thumbnail image."""
-    scenes = video_scenes.get(video_id, [])
+    scenes = video_scenes.get(video_hash, [])
     if 0 <= scene_index < len(scenes):
         scene = scenes[scene_index]
         if scene.thumbnail_path and scene.thumbnail_path.exists():
@@ -144,8 +153,12 @@ def get_thumbnail(video_id: str, scene_index: int) -> Response:
 @app.route("/api/process", methods=["POST"])
 def process_selections() -> Response:
     """Process user selections and create output video."""
-    if not current_video:
+    if not current_video_hash:
         return jsonify({"error": "No video selected"}), 400
+
+    video_path = video_hashes.get(current_video_hash)
+    if not video_path:
+        return jsonify({"error": "Video not found"}), 404
 
     data = request.json
     if not data:
@@ -154,8 +167,7 @@ def process_selections() -> Response:
     ad_scenes = data.get("ad_scenes", [])
     output_path = data.get("output_path")
 
-    video_id = str(current_video)
-    scenes = video_scenes.get(video_id, [])
+    scenes = video_scenes.get(current_video_hash, [])
 
     # Calculate ad segments based on selected scene indices
     segments_to_remove: list[tuple[float, float]] = []
@@ -166,11 +178,11 @@ def process_selections() -> Response:
 
     if not output_path:
         # Default output path
-        output_path = str(current_video.with_stem(current_video.stem + "_clean"))
+        output_path = str(video_path.with_stem(video_path.stem + "_clean"))
 
     try:
         processor = VideoProcessor()
-        processor.remove_segments(current_video, Path(output_path), segments_to_remove)
+        processor.remove_segments(video_path, Path(output_path), segments_to_remove)
         return jsonify({"success": True, "output_path": output_path})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -179,11 +191,10 @@ def process_selections() -> Response:
 @app.route("/api/preview/<int:scene_index>")
 def preview_scene(scene_index: int) -> Response:
     """Get a video preview for a specific scene."""
-    if not current_video:
+    if not current_video_hash:
         return "Not found", 404
 
-    video_id = str(current_video)
-    scenes = video_scenes.get(video_id, [])
+    scenes = video_scenes.get(current_video_hash, [])
 
     if not (0 <= scene_index < len(scenes)):
         return "Not found", 404
