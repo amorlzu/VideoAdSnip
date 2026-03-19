@@ -1,14 +1,10 @@
 """Flask web application for VideoAdSnip scene selection UI."""
 
-import json
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any
 
 from flask import Flask, Response, jsonify, render_template, request, send_file
 
-from videoadsnip.audio_analyzer import AudioAnalyzer
 from videoadsnip.scene_detector import Scene, SceneDetector
 
 app = Flask(__name__)
@@ -17,7 +13,6 @@ app = Flask(__name__)
 video_path: Path | None = None
 scenes: list[Scene] = []
 detection_window: tuple[float, float] = (0.0, 0.0)
-audio_hints: list[float] = []
 thumbnail_dir: Path | None = None
 
 
@@ -29,14 +24,9 @@ def init_app(video_file: Path, max_duration: float | None = None) -> None:
         video_file: Path to the video file
         max_duration: Maximum duration to analyze (for ad detection window)
     """
-    global video_path, scenes, detection_window, audio_hints, thumbnail_dir
+    global video_path, scenes, detection_window, thumbnail_dir
 
     video_path = video_file
-
-    # Run audio analysis first
-    audio_analyzer = AudioAnalyzer()
-    audio_result = audio_analyzer.analyze(video_file, max_duration=max_duration)
-    audio_hints = audio_result.silence_boundaries
 
     # Detect scenes
     scene_detector = SceneDetector()
@@ -65,7 +55,14 @@ def get_scenes() -> Response:
     """Get detected scenes as JSON."""
     scenes_data = []
     for scene in scenes:
-        scene_dict = asdict(scene)
+        scene_dict = {
+            "index": scene.index,
+            "start_time": scene.start_time,
+            "end_time": scene.end_time,
+            "start_frame": scene.start_frame,
+            "end_frame": scene.end_frame,
+            "duration": scene.duration,
+        }
         if scene.thumbnail_path:
             scene_dict["thumbnail_url"] = f"/thumbnails/{scene.index}"
         scenes_data.append(scene_dict)
@@ -75,7 +72,6 @@ def get_scenes() -> Response:
             "scenes": scenes_data,
             "video_path": str(video_path) if video_path else None,
             "detection_window": detection_window,
-            "audio_hints": audio_hints[:50],  # Limit hints
         }
     )
 

@@ -11,7 +11,6 @@ dependencies = [
     "numpy>=1.24.0",
     "rich>=13.0.0",
     "flask>=3.0.0",
-    "librosa>=0.10.0",
     "scenedetect>=0.6.0",
     "pillow>=10.0.0",
 ]

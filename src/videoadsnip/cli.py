@@ -9,7 +9,6 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from videoadsnip.audio_analyzer import AudioAnalyzer
 from videoadsnip.scene_detector import SceneDetector
 from videoadsnip.processor import VideoProcessor
 
@@ -98,22 +97,8 @@ def main() -> int:
         if args.verbose:
             _print_video_info(video_info)
 
-        # Step 2: Audio analysis
-        task2 = progress.add_task("Analyzing audio track...", total=None)
-        audio_analyzer = AudioAnalyzer()
-        try:
-            audio_result = audio_analyzer.analyze(args.input, max_duration=args.window)
-        except Exception as e:
-            console.print(f"[yellow]Warning:[/yellow] Audio analysis failed: {e}")
-            audio_result = None
-        progress.update(task2, completed=True)
-
-        if args.verbose and audio_result:
-            console.print(f"  Found {len(audio_result.loud_segments)} loud segments")
-            console.print(f"  Found {len(audio_result.silence_boundaries)} silence boundaries")
-
-        # Step 3: Scene detection
-        task3 = progress.add_task("Detecting scenes...", total=None)
+        # Step 2: Scene detection
+        task2 = progress.add_task("Detecting scenes...", total=None)
         scene_detector = SceneDetector()
         try:
             detection_result = scene_detector.detect(
@@ -124,14 +109,14 @@ def main() -> int:
         except Exception as e:
             console.print(f"[red]Error:[/red] Scene detection failed: {e}")
             return 1
-        progress.update(task3, completed=True)
+        progress.update(task2, completed=True)
 
         console.print(f"  Detected [bold]{len(detection_result.scenes)}[/bold] scenes")
 
     if args.no_ui:
-        # Auto mode: use audio hints to suggest ad segments
+        # Auto mode: select first scene as ad (simple heuristic)
         console.print("\n[yellow]Auto-detection mode:[/yellow]")
-        ad_scenes = _auto_detect_ads(detection_result.scenes, audio_result)
+        ad_scenes = detection_result.scenes[:1] if detection_result.scenes else []
 
         if not ad_scenes:
             console.print("[yellow]No ads detected automatically.[/yellow]")
@@ -184,39 +169,6 @@ def _print_video_info(info: dict) -> None:
     table.add_row("FPS", f"{info['video']['fps']:.2f}")
 
     console.print(table)
-
-
-def _auto_detect_ads(scenes, audio_result) -> list:
-    """
-    Automatically detect which scenes are likely ads.
-
-    Uses heuristics based on audio analysis and scene properties.
-    """
-    ad_scenes = []
-
-    if not audio_result:
-        return ad_scenes
-
-    # Get loud segments from audio analysis
-    loud_segments = audio_result.loud_segments
-
-    for scene in scenes:
-        # Check if this scene overlaps significantly with loud segments
-        scene_duration = scene.duration
-        overlap = 0.0
-
-        for loud_start, loud_end in loud_segments:
-            # Calculate overlap
-            overlap_start = max(scene.start_time, loud_start)
-            overlap_end = min(scene.end_time, loud_end)
-            if overlap_end > overlap_start:
-                overlap += overlap_end - overlap_start
-
-        # If more than 50% of the scene is loud, mark it as an ad
-        if scene_duration > 0 and overlap / scene_duration > 0.5:
-            ad_scenes.append(scene)
-
-    return ad_scenes
 
 
 if __name__ == "__main__":

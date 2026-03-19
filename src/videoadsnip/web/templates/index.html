@@ -151,14 +151,6 @@
             font-weight: 500;
         }
 
-        .audio-hint {
-            font-size: 11px;
-            color: #6c757d;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid #0f3460;
-        }
-
         .actions {
             position: fixed;
             bottom: 0;
@@ -277,7 +269,6 @@
             <h3>How to use</h3>
             <p>
                 Click on scenes that are advertisements to select them. Selected scenes will be highlighted in red.
-                Audio analysis has identified potentially loud segments (common in ads) - look for scenes marked with audio hints.
                 When done, click "Remove Selected Scenes" to create a clean version of your video.
             </p>
         </div>
@@ -316,7 +307,7 @@
                 document.getElementById('videoPath').textContent = data.video_path || 'Unknown video';
                 document.getElementById('sceneCount').textContent = `${scenes.length} scenes detected`;
 
-                renderScenes(data.audio_hints);
+                renderScenes();
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('scenesGrid').style.display = 'grid';
             } catch (error) {
@@ -326,7 +317,7 @@
             }
         }
 
-        function renderScenes(audioHints) {
+        function renderScenes() {
             const grid = document.getElementById('scenesGrid');
             grid.innerHTML = '';
 
@@ -339,11 +330,6 @@
                 const startTime = formatTime(scene.start_time);
                 const endTime = formatTime(scene.end_time);
                 const duration = formatDuration(scene.duration);
-
-                // Check if this scene overlaps with audio hints
-                const hasAudioHint = audioHints.some(hint =>
-                    hint >= scene.start_time && hint <= scene.end_time
-                );
 
                 card.innerHTML = `
                     <img class="scene-thumbnail"
@@ -359,7 +345,6 @@
                             <span>${startTime} - ${endTime}</span>
                             <span class="scene-duration">Duration: ${duration}</span>
                         </div>
-                        ${hasAudioHint ? '<div class="audio-hint">🔊 Audio change detected</div>' : ''}
                     </div>
                 `;
 

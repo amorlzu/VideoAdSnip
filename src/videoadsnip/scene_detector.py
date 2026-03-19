@@ -58,7 +58,6 @@ class SceneDetector:
         video_path: Path,
         start_time: float = 0.0,
         end_time: float | None = None,
-        audio_hints: list[float] | None = None,
     ) -> SceneDetectionResult:
         """
         Detect scenes in a video file.
@@ -67,7 +66,6 @@ class SceneDetector:
             video_path: Path to the video file
             start_time: Start time for detection (seconds)
             end_time: End time for detection (seconds, None for entire video)
-            audio_hints: List of times where audio changes occur (to improve detection)
 
         Returns:
             SceneDetectionResult with detected scenes
@@ -121,31 +119,6 @@ class SceneDetector:
             frame_count=total_frames,
         )
 
-    def detect_with_audio_hints(
-        self,
-        video_path: Path,
-        audio_boundaries: list[float],
-        threshold: float = 20.0,
-    ) -> list[Scene]:
-        """
-        Detect scenes using audio boundaries as hints.
-
-        This method first finds scene changes near audio boundaries,
-        then fills in with regular scene detection.
-
-        Args:
-            video_path: Path to the video file
-            audio_boundaries: Times where audio changes occur
-            threshold: Detection threshold (lower near audio boundaries)
-
-        Returns:
-            List of detected scenes
-        """
-        # TODO: Implement smart detection using audio hints
-        # For now, fall back to regular detection
-        result = self.detect(video_path)
-        return result.scenes
-
     def extract_thumbnails(
         self,
         video_path: Path,
@@ -169,9 +142,8 @@ class SceneDetector:
         fps = cap.get(cv2.CAP_PROP_FPS)
 
         for scene in scenes:
-            # Extract frame from middle of scene
-            mid_time = (scene.start_time + scene.end_time) / 2
-            frame_num = int(mid_time * fps)
+            # Extract frame from start of scene
+            frame_num = scene.start_frame
 
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = cap.read()
