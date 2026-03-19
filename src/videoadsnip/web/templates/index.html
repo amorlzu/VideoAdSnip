@@ -334,6 +334,112 @@
         .close-btn:hover {
             background: #16213e;
         }
+
+        /* Video List Styles */
+        .video-list-container {
+            background: #16213e;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .video-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            background: #0f3460;
+            transition: background 0.3s;
+        }
+
+        .video-list-header:hover {
+            background: #1a4a7a;
+        }
+
+        .video-list-header h3 {
+            margin: 0;
+            color: #e94560;
+            font-size: 16px;
+        }
+
+        .video-list-toggle {
+            color: #888;
+            transition: transform 0.3s;
+        }
+
+        .video-list-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .video-list {
+            max-height: 300px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+
+        .video-list.collapsed {
+            max-height: 0;
+        }
+
+        .video-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #0f3460;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .video-item:last-child {
+            border-bottom: none;
+        }
+
+        .video-item:hover {
+            background: #0f3460;
+        }
+
+        .video-item.active {
+            background: #0f3460;
+            border-left: 3px solid #e94560;
+        }
+
+        .video-item-icon {
+            width: 40px;
+            height: 30px;
+            background: #0a0a0a;
+            border-radius: 4px;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .video-item-info {
+            flex: 1;
+        }
+
+        .video-item-name {
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+
+        .video-item-meta {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .video-item-badge {
+            background: #e94560;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
@@ -359,6 +465,15 @@
                 Click on scenes that are advertisements to select them. Selected scenes will be highlighted in red.
                 When done, click "Remove Selected Scenes" to create a clean version of your video.
             </p>
+        </div>
+
+        <!-- Video List -->
+        <div class="video-list-container" id="videoListContainer" style="display: none;">
+            <div class="video-list-header" onclick="toggleVideoList()">
+                <h3>📁 Video List (<span id="videoCount">0</span> videos)</h3>
+                <span class="video-list-toggle" id="videoListToggle">▼</span>
+            </div>
+            <div class="video-list" id="videoList"></div>
         </div>
 
         <div id="loading" class="loading">
@@ -396,9 +511,79 @@
     <script>
         let scenes = [];
         let selectedScenes = new Set();
+        let videos = [];
+        let currentVideo = null;
+        let videoListCollapsed = false;
 
-        // Load scenes on page load
-        document.addEventListener('DOMContentLoaded', loadScenes);
+        // Load on page load
+        document.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            await loadVideos();
+            await loadScenes();
+        }
+
+        async function loadVideos() {
+            try {
+                const response = await fetch('/api/videos');
+                const data = await response.json();
+                videos = data.videos || [];
+                currentVideo = data.current;
+
+                if (videos.length > 1) {
+                    renderVideoList();
+                    document.getElementById('videoListContainer').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading videos:', error);
+            }
+        }
+
+        function renderVideoList() {
+            const list = document.getElementById('videoList');
+            list.innerHTML = '';
+
+            videos.forEach(video => {
+                const item = document.createElement('div');
+                item.className = 'video-item' + (video.id === currentVideo ? ' active' : '');
+                item.onclick = () => selectVideo(video.id);
+
+                const duration = formatDuration(video.duration || 0);
+                const sceneInfo = video.scene_count ? `${video.scene_count} scenes` : '';
+
+                item.innerHTML = `
+                    <div class="video-item-icon">▶</div>
+                    <div class="video-item-info">
+                        <div class="video-item-name">${video.name}</div>
+                        <div class="video-item-meta">${duration} ${video.resolution || ''} ${sceneInfo}</div>
+                    </div>
+                    ${video.id === currentVideo ? '<span class="video-item-badge">Current</span>' : ''}
+                `;
+                list.appendChild(item);
+            });
+
+            document.getElementById('videoCount').textContent = videos.length;
+        }
+
+        function toggleVideoList() {
+            videoListCollapsed = !videoListCollapsed;
+            document.getElementById('videoList').classList.toggle('collapsed', videoListCollapsed);
+            document.getElementById('videoListToggle').classList.toggle('collapsed', videoListCollapsed);
+        }
+
+        async function selectVideo(videoId) {
+            try {
+                const response = await fetch(`/api/select/${encodeURIComponent(videoId)}`, { method: 'POST' });
+                if (response.ok) {
+                    currentVideo = videoId;
+                    selectedScenes.clear();
+                    renderVideoList();
+                    await loadScenes();
+                }
+            } catch (error) {
+                console.error('Error selecting video:', error);
+            }
+        }
 
         async function loadScenes() {
             try {
@@ -406,7 +591,7 @@
                 const data = await response.json();
 
                 scenes = data.scenes;
-                document.getElementById('videoPath').textContent = data.video_path || 'Unknown video';
+                document.getElementById('videoPath').textContent = data.video_name || data.video_path || 'Unknown video';
                 document.getElementById('sceneCount').textContent = `${scenes.length} scenes detected`;
 
                 renderScenes();

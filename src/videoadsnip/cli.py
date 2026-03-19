@@ -14,6 +14,34 @@ from videoadsnip.processor import VideoProcessor
 
 console = Console()
 
+# Supported video extensions
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv"}
+
+
+def scan_video_files(input_path: Path) -> list[Path]:
+    """
+    Scan for video files in a path.
+
+    Args:
+        input_path: File or directory path
+
+    Returns:
+        List of video file paths (excluding _clean files)
+    """
+    if input_path.is_file():
+        return [input_path]
+
+    video_files = []
+    for ext in VIDEO_EXTENSIONS:
+        for file_path in input_path.glob(f"*{ext}"):
+            # Skip files ending with _clean before extension
+            stem = file_path.stem
+            if stem.endswith("_clean"):
+                continue
+            video_files.append(file_path)
+
+    return sorted(video_files, key=lambda x: x.name.lower())
+
 
 def main() -> int:
     """Main entry point for the CLI."""
@@ -24,7 +52,7 @@ def main() -> int:
     parser.add_argument(
         "input",
         type=Path,
-        help="Input video file",
+        help="Input video file or directory",
     )
     parser.add_argument(
         "-o",
@@ -65,93 +93,38 @@ def main() -> int:
     args = parser.parse_args()
 
     if not args.input.exists():
-        console.print(f"[red]Error:[/red] Input file does not exist: {args.input}")
+        console.print(f"[red]Error:[/red] Input path does not exist: {args.input}")
         return 1
 
-    if not args.input.is_file():
-        console.print(f"[red]Error:[/red] Input must be a file: {args.input}")
+    # Scan for video files
+    video_files = scan_video_files(args.input)
+
+    if not video_files:
+        console.print(f"[red]Error:[/red] No video files found in: {args.input}")
         return 1
 
     console.print(f"[bold blue]VideoAdSnip[/bold blue] v{__import__('videoadsnip').__version__}")
-    console.print(f"Input: {args.input}")
+    console.print(f"Found {len(video_files)} video(s)")
+
+    if args.verbose:
+        for vf in video_files:
+            console.print(f"  - {vf}")
+
     console.print(f"Detection window: {args.window}s")
 
-    # Determine output path
-    output_path = args.output or args.input.with_stem(args.input.stem + "_clean")
+    # Interactive mode: launch web UI
+    console.print(f"\nLaunching web UI at [bold]http://127.0.0.1:{args.port}[/bold]")
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        # Step 1: Get video info
-        task1 = progress.add_task("Analyzing video file...", total=None)
-        processor = VideoProcessor()
-        try:
-            video_info = processor.get_video_info(args.input)
-        except Exception as e:
-            console.print(f"[red]Error:[/red] Failed to read video: {e}")
-            return 1
-        progress.update(task1, completed=True)
+    # Initialize and run web app with multiple videos
+    from videoadsnip.web import init_app_with_videos, run_server
 
-        if args.verbose:
-            _print_video_info(video_info)
+    init_app_with_videos(video_files, duration=args.window)
 
-        # Step 2: Scene detection
-        task2 = progress.add_task("Detecting scenes...", total=None)
-        scene_detector = SceneDetector()
-        try:
-            detection_result = scene_detector.detect(
-                args.input,
-                start_time=0.0,
-                end_time=args.window,
-            )
-        except Exception as e:
-            console.print(f"[red]Error:[/red] Scene detection failed: {e}")
-            return 1
-        progress.update(task2, completed=True)
+    if not args.no_browser:
+        webbrowser.open(f"http://127.0.0.1:{args.port}")
 
-        console.print(f"  Detected [bold]{len(detection_result.scenes)}[/bold] scenes")
-
-    if args.no_ui:
-        # Auto mode: select first scene as ad (simple heuristic)
-        console.print("\n[yellow]Auto-detection mode:[/yellow]")
-        ad_scenes = detection_result.scenes[:1] if detection_result.scenes else []
-
-        if not ad_scenes:
-            console.print("[yellow]No ads detected automatically.[/yellow]")
-            console.print("Try using the web UI mode for manual selection.")
-            return 0
-
-        console.print(f"Auto-detected {len(ad_scenes)} ad scenes:")
-        for scene in ad_scenes:
-            console.print(f"  - Scene {scene.index + 1}: {scene.start_time:.1f}s - {scene.end_time:.1f}s")
-
-        # Process video
-        segments_to_remove = [(s.start_time, s.end_time) for s in ad_scenes]
-        console.print(f"\nProcessing video...")
-        processor.remove_segments(args.input, output_path, segments_to_remove)
-        console.print(f"[green]Success![/green] Output saved to: {output_path}")
-
-    else:
-        # Interactive mode: launch web UI
-        console.print(f"\nLaunching web UI at [bold]http://127.0.0.1:{args.port}[/bold]")
-
-        # Extract thumbnails
-        import tempfile
-        thumbnail_dir = Path(tempfile.mkdtemp(prefix="videoadsnip_thumbs_"))
-        scene_detector.extract_thumbnails(args.input, detection_result.scenes, thumbnail_dir)
-
-        # Initialize and run web app
-        from videoadsnip.web import init_app, run_server
-
-        init_app(args.input, max_duration=args.window)
-
-        if not args.no_browser:
-            webbrowser.open(f"http://127.0.0.1:{args.port}")
-
-        console.print("[dim]Press Ctrl+C to stop the server[/dim]\n")
-        run_server(port=args.port)
+    console.print("[dim]Press Ctrl+C to stop the server[/dim]\n")
+    run_server(port=args.port)
 
     return 0
 
