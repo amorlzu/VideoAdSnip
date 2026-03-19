@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoAdSnip - Scene Selection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eaeaea;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #e94560;
+        }
+
+        .header .subtitle {
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .info-bar {
+            background: #16213e;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .video-info {
+            color: #888;
+        }
+
+        .video-info span {
+            margin-right: 20px;
+        }
+
+        .instructions {
+            background: #0f3460;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+
+        .instructions p {
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .scenes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .scene-card {
+            background: #16213e;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .scene-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .scene-card.selected {
+            border-color: #e94560;
+            background: #1a1a2e;
+        }
+
+        .scene-card.selected .scene-badge {
+            background: #e94560;
+        }
+
+        .scene-thumbnail {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            background: #0a0a0a;
+        }
+
+        .scene-info {
+            padding: 15px;
+        }
+
+        .scene-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .scene-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .scene-badge {
+            background: #0f3460;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .scene-times {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .scene-times span {
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .scene-duration {
+            color: #e94560;
+            font-weight: 500;
+        }
+
+        .audio-hint {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #0f3460;
+        }
+
+        .actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #16213e;
+            padding: 20px;
+            border-top: 1px solid #0f3460;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #e94560;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #ff6b6b;
+        }
+
+        .btn-primary:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #0f3460;
+            color: #888;
+        }
+
+        .btn-secondary:hover {
+            background: #16213e;
+            color: #fff;
+        }
+
+        .selection-count {
+            background: #e94560;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #888;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #0f3460;
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #16213e;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 1000;
+        }
+
+        .toast.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .toast.error {
+            border-left: 4px solid #e94560;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>VideoAdSnip</h1>
+        <div class="subtitle">Select scenes to remove as advertisements</div>
+    </div>
+
+    <div class="container">
+        <div class="info-bar">
+            <div class="video-info" id="videoInfo">
+                <span id="videoPath">Loading...</span>
+                <span id="sceneCount"></span>
+            </div>
+            <div>
+                <span id="selectedCount">0</span> scenes selected
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to use</h3>
+            <p>
+                Click on scenes that are advertisements to select them. Selected scenes will be highlighted in red.
+                Audio analysis has identified potentially loud segments (common in ads) - look for scenes marked with audio hints.
+                When done, click "Remove Selected Scenes" to create a clean version of your video.
+            </p>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Analyzing video and detecting scenes...</p>
+        </div>
+
+        <div id="scenesGrid" class="scenes-grid" style="display: none;"></div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-secondary" onclick="selectAll()">Select All</button>
+        <button class="btn btn-secondary" onclick="clearSelection()">Clear Selection</button>
+        <button class="btn btn-primary" id="processBtn" onclick="processVideo()" disabled>
+            Remove Selected Scenes<span class="selection-count" id="selectionCount">0</span>
+        </button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let scenes = [];
+        let selectedScenes = new Set();
+
+        // Load scenes on page load
+        document.addEventListener('DOMContentLoaded', loadScenes);
+
+        async function loadScenes() {
+            try {
+                const response = await fetch('/api/scenes');
+                const data = await response.json();
+
+                scenes = data.scenes;
+                document.getElementById('videoPath').textContent = data.video_path || 'Unknown video';
+                document.getElementById('sceneCount').textContent = `${scenes.length} scenes detected`;
+
+                renderScenes(data.audio_hints);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('scenesGrid').style.display = 'grid';
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <p style="color: #e94560;">Error loading scenes: ${error.message}</p>
+                `;
+            }
+        }
+
+        function renderScenes(audioHints) {
+            const grid = document.getElementById('scenesGrid');
+            grid.innerHTML = '';
+
+            scenes.forEach((scene, index) => {
+                const card = document.createElement('div');
+                card.className = 'scene-card';
+                card.dataset.index = index;
+                card.onclick = () => toggleScene(index);
+
+                const startTime = formatTime(scene.start_time);
+                const endTime = formatTime(scene.end_time);
+                const duration = formatDuration(scene.duration);
+
+                // Check if this scene overlaps with audio hints
+                const hasAudioHint = audioHints.some(hint =>
+                    hint >= scene.start_time && hint <= scene.end_time
+                );
+
+                card.innerHTML = `
+                    <img class="scene-thumbnail"
+                         src="${scene.thumbnail_url || '/static/placeholder.jpg'}"
+                         alt="Scene ${index + 1}"
+                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 9%22><rect fill=%22%230a0a0a%22 width=%2216%22 height=%229%22/><text x=%228%22 y=%225%22 fill=%22%23333%22 text-anchor=%22middle%22>No Preview</text></svg>'">
+                    <div class="scene-info">
+                        <div class="scene-header">
+                            <span class="scene-title">Scene ${index + 1}</span>
+                            <span class="scene-badge">${duration}</span>
+                        </div>
+                        <div class="scene-times">
+                            <span>${startTime} - ${endTime}</span>
+                            <span class="scene-duration">Duration: ${duration}</span>
+                        </div>
+                        ${hasAudioHint ? '<div class="audio-hint">🔊 Audio change detected</div>' : ''}
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleScene(index) {
+            const card = document.querySelector(`.scene-card[data-index="${index}"]`);
+
+            if (selectedScenes.has(index)) {
+                selectedScenes.delete(index);
+                card.classList.remove('selected');
+            } else {
+                selectedScenes.add(index);
+                card.classList.add('selected');
+            }
+
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            const count = selectedScenes.size;
+            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('selectionCount').textContent = count;
+            document.getElementById('processBtn').disabled = count === 0;
+        }
+
+        function selectAll() {
+            scenes.forEach((_, index) => {
+                selectedScenes.add(index);
+                document.querySelector(`.scene-card[data-index="${index}"]`)?.classList.add('selected');
+            });
+            updateSelectionCount();
+        }
+
+        function clearSelection() {
+            selectedScenes.clear();
+            document.querySelectorAll('.scene-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            updateSelectionCount();
+        }
+
+        async function processVideo() {
+            const btn = document.getElementById('processBtn');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            try {
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ad_scenes: Array.from(selectedScenes),
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(`Success! Output saved to: ${data.output_path}`, 'success');
+                } else {
+                    showToast(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = 'Remove Selected Scenes<span class="selection-count" id="selectionCount">' + selectedScenes.size + '</span>';
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            toast.style.display = 'block';
+
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 5000);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatDuration(seconds) {
+            if (seconds < 60) {
+                return `${seconds.toFixed(1)}s`;
+            }
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}m ${secs}s`;
+        }
+    </script>
+</body>
+</html>
