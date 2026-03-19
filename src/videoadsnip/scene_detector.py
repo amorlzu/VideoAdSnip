@@ -5,7 +5,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from scenedetect import ContentDetector, SceneManager, VideoManager
+from scenedetect import ContentDetector, detect, open_video
 
 
 @dataclass
@@ -72,49 +72,35 @@ class SceneDetector:
         Returns:
             SceneDetectionResult with detected scenes
         """
-        # Use scenedetect for accurate scene detection
-        video_manager = VideoManager([str(video_path)])
-        scene_manager = SceneManager()
+        # Use scenedetect.detect for simple scene detection
+        detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
 
-        # Add content detector for detecting scene changes
-        scene_manager.add_detector(
-            ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
+        # Get video info first
+        video = open_video(str(video_path))
+        fps = video.frame_rate
+        total_frames = video.duration.get_frames()
+        total_duration = total_frames / fps if fps > 0 else 0
+
+        # Perform detection with time bounds
+        scene_list = detect(
+            str(video_path),
+            detector,
+            start_time=start_time if start_time > 0 else None,
+            end_time=end_time,
+            show_progress=False,
         )
-
-        video_manager.set_downscale_factor()  # Auto downscale for performance
-        video_manager.start()
-
-        # Set start/end time if specified
-        if start_time > 0:
-            video_manager.seek(start_time)
-        if end_time is not None:
-            duration = end_time - start_time
-            video_manager.set_duration(duration=duration)
-
-        # Detect scenes
-        scene_manager.detect_scenes(frame_source=video_manager)
-
-        # Get scene list
-        scene_list = scene_manager.get_scene_list()
-
-        # Get video info
-        fps = video_manager.get_framerate()
-        frame_count = video_manager.get_current_frame()
-        duration = frame_count / fps if fps > 0 else 0
 
         # Convert to our Scene objects
         scenes: list[Scene] = []
         for i, (start, end) in enumerate(scene_list):
             scene = Scene(
                 index=i,
-                start_time=start.get_seconds() + start_time,
-                end_time=end.get_seconds() + start_time,
+                start_time=start.get_seconds(),
+                end_time=end.get_seconds(),
                 start_frame=start.get_frames(),
                 end_frame=end.get_frames(),
             )
             scenes.append(scene)
-
-        video_manager.release()
 
         # If no scenes detected, treat entire video as one scene
         if not scenes:
@@ -122,17 +108,17 @@ class SceneDetector:
                 Scene(
                     index=0,
                     start_time=start_time,
-                    end_time=end_time if end_time else duration,
+                    end_time=end_time if end_time else total_duration,
                     start_frame=0,
-                    end_frame=frame_count,
+                    end_frame=total_frames,
                 )
             ]
 
         return SceneDetectionResult(
             scenes=scenes,
-            total_duration=duration,
+            total_duration=total_duration,
             fps=fps,
-            frame_count=frame_count,
+            frame_count=total_frames,
         )
 
     def detect_with_audio_hints(
