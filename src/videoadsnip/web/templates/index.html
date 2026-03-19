@@ -246,6 +246,92 @@
         .toast.error {
             border-left: 4px solid #e94560;
         }
+
+        /* Progress Modal */
+        .progress-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .progress-modal.show {
+            display: flex;
+        }
+
+        .progress-content {
+            background: #16213e;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .progress-content h3 {
+            margin-bottom: 20px;
+            color: #e94560;
+        }
+
+        .progress-content p {
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-container {
+            background: #0a0a0a;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .progress-status {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .progress-success {
+            color: #28a745;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        .progress-error {
+            color: #e94560;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        .close-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            background: #0f3460;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .close-btn:hover {
+            background: #16213e;
+        }
     </style>
 </head>
 <body>
@@ -290,6 +376,20 @@
     </div>
 
     <div class="toast" id="toast"></div>
+
+    <!-- Progress Modal -->
+    <div class="progress-modal" id="progressModal">
+        <div class="progress-content">
+            <h3 id="progressTitle">Processing Video</h3>
+            <p id="progressMessage">Please wait while we process your video...</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-status" id="progressStatus">Starting...</div>
+            <div id="progressResult"></div>
+            <button class="close-btn" id="closeBtn" style="display: none;" onclick="closeProgressModal()">Close</button>
+        </div>
+    </div>
 
     <script>
         let scenes = [];
@@ -392,9 +492,13 @@
         async function processVideo() {
             const btn = document.getElementById('processBtn');
             btn.disabled = true;
-            btn.textContent = 'Processing...';
+
+            // Show progress modal
+            showProgressModal();
 
             try {
+                updateProgress(10, 'Preparing to process video...');
+
                 const response = await fetch('/api/process', {
                     method: 'POST',
                     headers: {
@@ -405,19 +509,51 @@
                     }),
                 });
 
+                updateProgress(50, 'Processing video segments...');
+
                 const data = await response.json();
 
-                if (data.success) {
-                    showToast(`Success! Output saved to: ${data.output_path}`, 'success');
-                } else {
-                    showToast(`Error: ${data.error}`, 'error');
-                }
+                updateProgress(90, 'Finalizing...');
+
+                setTimeout(() => {
+                    if (data.success) {
+                        updateProgress(100, 'Complete!');
+                        showProgressResult(true, `Success! Output saved to:<br><strong>${data.output_path}</strong>`);
+                    } else {
+                        showProgressResult(false, `Error: ${data.error}`);
+                    }
+                }, 300);
+
             } catch (error) {
-                showToast(`Error: ${error.message}`, 'error');
+                showProgressResult(false, `Error: ${error.message}`);
             }
 
             btn.disabled = false;
             btn.innerHTML = 'Remove Selected Scenes<span class="selection-count" id="selectionCount">' + selectedScenes.size + '</span>';
+        }
+
+        function showProgressModal() {
+            document.getElementById('progressModal').classList.add('show');
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressStatus').textContent = 'Starting...';
+            document.getElementById('progressResult').innerHTML = '';
+            document.getElementById('closeBtn').style.display = 'none';
+        }
+
+        function closeProgressModal() {
+            document.getElementById('progressModal').classList.remove('show');
+        }
+
+        function updateProgress(percent, status) {
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressStatus').textContent = status;
+        }
+
+        function showProgressResult(success, message) {
+            const resultDiv = document.getElementById('progressResult');
+            resultDiv.innerHTML = `<div class="${success ? 'progress-success' : 'progress-error'}">${message}</div>`;
+            document.getElementById('progressStatus').textContent = '';
+            document.getElementById('closeBtn').style.display = 'inline-block';
         }
 
         function showToast(message, type) {
