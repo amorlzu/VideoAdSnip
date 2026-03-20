@@ -1,6 +1,9 @@
 """Flask web application for VideoAdSnip scene selection UI."""
 
 import hashlib
+import json
+import platform
+import subprocess
 import tempfile
 import threading
 from dataclasses import dataclass, field
@@ -11,6 +14,50 @@ from flask import Flask, Response, jsonify, render_template, request, send_file
 
 from videoadsnip.scene_detector import Scene, SceneDetector
 from videoadsnip.processor import VideoProcessor, get_unique_output_path
+
+
+def _browse_files_macos() -> list[str]:
+    """Open file browser on macOS using osascript."""
+    script = '''
+    set theFiles to choose file with prompt "Select Video Files" of type {"public.movie"} with multiple selections allowed
+    set thePaths to {}
+    repeat with aFile in theFiles
+        set end of thePaths to POSIX path of aFile
+    end repeat
+    return thePaths
+    '''
+    result = subprocess.run(
+        ["osascript", "-e", script],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        # AppleScript returns paths separated by comma
+        paths = [p.strip() for p in result.stdout.strip().split(", ")]
+        return paths
+    return []
+
+
+def _browse_files_windows() -> list[str]:
+    """Open file browser on Windows using PowerShell."""
+    script = '''
+    Add-Type -AssemblyName System.Windows.Forms
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    $dialog.Title = "Select Video Files"
+    $dialog.Filter = "Video Files (*.mp4;*.mkv;*.avi;*.mov;*.webm;*.flv;*.wmv)|*.mp4;*.mkv;*.avi;*.mov;*.webm;*.flv;*.wmv|All Files (*.*)|*.*"
+    $dialog.Multiselect = $true
+    if ($dialog.ShowDialog() -eq 'OK') {
+        $dialog.FileNames -join '|'
+    }
+    '''
+    result = subprocess.run(
+        ["powershell", "-Command", script],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip().split("|")
+    return []
 
 app = Flask(__name__)
 
@@ -318,77 +365,158 @@ def preview_scene(scene_index: int) -> Response:
     return "Not found", 404
 
 
-# ============ Upload API Endpoints ============
+# ============ Path API Endpoints ============
 
-UPLOAD_FOLDER = Path(tempfile.gettempdir()) / "videoadsnip_uploads"
-
-
-@app.route("/api/upload", methods=["POST"])
-def upload_video() -> Response:
-    """Upload a video file and add it to the processing list."""
+@app.route("/api/add_path", methods=["POST"])
+def add_path() -> Response:
+    """Add video file(s) by path without uploading. For local use only."""
     global video_files, video_hashes, analysis_status, current_video_hash
 
-    if "file" not in request.files:
-        return jsonify({"success": False, "error": "No file provided"}), 400
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
 
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"success": False, "error": "No file selected"}), 400
+    path_str = data.get("path", "").strip()
+    if not path_str:
+        return jsonify({"success": False, "error": "No path provided"}), 400
 
-    # Check file extension
+    input_path = Path(path_str).expanduser()
+
+    if not input_path.exists():
+        return jsonify({"success": False, "error": f"Path does not exist: {path_str}"}), 400
+
     allowed_extensions = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv"}
-    file_ext = Path(file.filename).suffix.lower()
-    if file_ext not in allowed_extensions:
-        return jsonify({
-            "success": False,
-            "error": f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"
-        }), 400
 
-    # Create upload folder if needed
-    UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+    # Collect video files from the path
+    added_files: list[Path] = []
+    if input_path.is_file():
+        if input_path.suffix.lower() in allowed_extensions:
+            added_files.append(input_path)
+        else:
+            return jsonify({
+                "success": False,
+                "error": f"Not a video file. Supported: {', '.join(allowed_extensions)}"
+            }), 400
+    else:
+        # Scan directory for video files
+        for ext in allowed_extensions:
+            for file_path in input_path.glob(f"*{ext}"):
+                # Skip _clean files
+                if not file_path.stem.endswith("_clean"):
+                    added_files.append(file_path)
+        added_files.sort(key=lambda x: x.name.lower())
 
-    # Save file
-    filename = file.filename
-    # Handle duplicate names
-    dest_path = UPLOAD_FOLDER / filename
-    counter = 1
-    while dest_path.exists():
-        stem = Path(filename).stem
-        dest_path = UPLOAD_FOLDER / f"{stem}_{counter}{file_ext}"
-        counter += 1
+    if not added_files:
+        return jsonify({"success": False, "error": "No video files found at path"}), 400
 
-    try:
-        file.save(str(dest_path))
-    except Exception as e:
-        return jsonify({"success": False, "error": f"Failed to save file: {e}"}), 500
+    # Add files to processing list
+    added_count = 0
+    for video_file in added_files:
+        video_hash = get_video_hash(video_file)
 
-    # Add to video list
-    video_hash = get_video_hash(dest_path)
-    video_hashes[video_hash] = dest_path
-    video_files.append(dest_path)
-    analysis_status[video_hash] = {
-        "status": "pending",
-        "progress": 0,
-        "error": None,
-    }
+        # Skip if already in list
+        if video_hash in video_hashes:
+            continue
 
-    # Start background analysis for this video
-    thread = threading.Thread(
-        target=_analyze_video,
-        args=(dest_path, video_hash),
-        daemon=True,
-    )
-    thread.start()
+        video_hashes[video_hash] = video_file
+        video_files.append(video_file)
+        analysis_status[video_hash] = {
+            "status": "pending",
+            "progress": 0,
+            "error": None,
+        }
+        added_count += 1
 
-    # Set as current video if no video is selected
-    if current_video_hash is None:
-        current_video_hash = video_hash
+        # Start background analysis
+        thread = threading.Thread(
+            target=_analyze_video,
+            args=(video_file, video_hash),
+            daemon=True,
+        )
+        thread.start()
+
+    # Set first added video as current if none selected
+    if current_video_hash is None and added_files:
+        current_video_hash = get_video_hash(added_files[0])
 
     return jsonify({
         "success": True,
-        "filename": dest_path.name,
-        "video_hash": video_hash,
+        "added_count": added_count,
+        "total_found": len(added_files),
+        "files": [f.name for f in added_files[:10]],  # First 10 filenames
     })
+
+
+@app.route("/api/browse/files")
+def browse_files() -> Response:
+    """Open native file picker to select video files."""
+    system = platform.system()
+
+    try:
+        if system == "Darwin":  # macOS
+            paths = _browse_files_macos()
+        elif system == "Windows":
+            paths = _browse_files_windows()
+        else:
+            return jsonify({"error": "Unsupported platform", "paths": []}), 400
+
+        return jsonify({"paths": paths})
+    except Exception as e:
+        return jsonify({"error": str(e), "paths": []}), 500
+
+
+def _browse_folder_macos() -> str:
+    """Open folder browser on macOS using osascript."""
+    script = '''
+    set theFolder to choose folder with prompt "Select Folder Containing Videos"
+    return POSIX path of theFolder
+    '''
+    result = subprocess.run(
+        ["osascript", "-e", script],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return ""
+
+
+def _browse_folder_windows() -> str:
+    """Open folder browser on Windows using PowerShell."""
+    script = '''
+    Add-Type -AssemblyName System.Windows.Forms
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = "Select Folder Containing Videos"
+    if ($dialog.ShowDialog() -eq 'OK') {
+        $dialog.SelectedPath
+    }
+    '''
+    result = subprocess.run(
+        ["powershell", "-Command", script],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return ""
+
+
+@app.route("/api/browse/folder")
+def browse_folder() -> Response:
+    """Open native folder picker."""
+    system = platform.system()
+
+    try:
+        if system == "Darwin":  # macOS
+            path = _browse_folder_macos()
+        elif system == "Windows":
+            path = _browse_folder_windows()
+        else:
+            return jsonify({"error": "Unsupported platform", "path": ""}), 400
+
+        return jsonify({"path": path})
+    except Exception as e:
+        return jsonify({"error": str(e), "path": ""}), 500
 
 
 # ============ Queue API Endpoints ============

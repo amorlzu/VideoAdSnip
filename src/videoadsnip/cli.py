@@ -118,7 +118,7 @@ def main() -> int:
 
         console.print(f"Detection window: {args.window}s")
     else:
-        console.print("No input provided. Drag & drop videos in the web UI.")
+        console.print("No input provided. Enter file/folder paths in the web UI.")
 
     # Interactive mode: launch web UI
     console.print(f"\nLaunching web UI at [bold]http://127.0.0.1:{args.port}[/bold]")

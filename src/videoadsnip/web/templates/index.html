@@ -75,100 +75,64 @@
             line-height: 1.6;
         }
 
-        /* Drop Zone Styles */
-        .drop-zone {
-            border: 3px dashed #0f3460;
-            border-radius: 16px;
-            padding: 60px 40px;
-            text-align: center;
+        /* Add Videos Panel Styles */
+        .add-videos-panel {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 25px 30px;
             margin-bottom: 20px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            background: rgba(15, 52, 96, 0.3);
+            border: 1px solid #0f3460;
         }
 
-        .drop-zone:hover {
-            border-color: #e94560;
-            background: rgba(233, 69, 96, 0.1);
-        }
-
-        .drop-zone.dragover {
-            border-color: #28a745;
-            background: rgba(40, 167, 69, 0.2);
-            transform: scale(1.02);
-        }
-
-        .drop-zone-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
-
-        .drop-zone h2 {
-            color: #fff;
+        .add-videos-panel h3 {
+            color: #e94560;
             margin-bottom: 10px;
-            font-size: 24px;
         }
 
-        .drop-zone p {
+        .add-videos-panel p {
             color: #888;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
         }
 
         .drop-zone-hint {
             color: #666;
             font-size: 12px;
+            margin-bottom: 15px;
         }
 
-        .drop-zone-buttons {
+        .path-input-container {
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 10px;
         }
 
-        .drop-zone .btn {
+        .path-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #eaeaea;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .path-input:focus {
+            border-color: #e94560;
+        }
+
+        .path-input::placeholder {
+            color: #666;
+        }
+
+        .path-input-container .btn {
             padding: 12px 24px;
+            white-space: nowrap;
         }
 
         .upload-progress {
             margin-top: 20px;
             text-align: left;
-        }
-
-        .upload-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 15px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .upload-item-icon {
-            margin-right: 15px;
-            font-size: 24px;
-        }
-
-        .upload-item-info {
-            flex: 1;
-        }
-
-        .upload-item-name {
-            color: #fff;
-            margin-bottom: 4px;
-        }
-
-        .upload-item-progress {
-            height: 4px;
-            background: #333;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .upload-item-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #e94560, #ff6b6b);
-            transition: width 0.3s;
         }
 
         .scenes-grid {
@@ -737,22 +701,23 @@
                     </p>
                 </div>
 
-                <!-- Drop Zone for Adding Videos -->
-                <div class="drop-zone" id="dropZone" style="display: none;">
-                    <div class="drop-zone-icon">📁</div>
-                    <h2>Drop Videos Here</h2>
-                    <p>or click to select files</p>
+                <!-- Add Videos by Path -->
+                <div class="add-videos-panel" id="addVideosPanel" style="display: none;">
+                    <h3>📁 Add Videos</h3>
+                    <p>Enter a path or browse to select video files or folders.</p>
                     <div class="drop-zone-hint">Supported formats: MP4, MKV, AVI, MOV, WEBM, FLV, WMV</div>
-                    <div class="drop-zone-buttons">
-                        <button class="btn btn-primary" onclick="selectFiles(event)">
-                            Select Files
+
+                    <div class="path-input-container">
+                        <input type="text" id="pathInput" class="path-input"
+                               placeholder="Enter file or folder path (e.g., /Users/name/Videos or ~/Movies/video.mp4)"
+                               onkeypress="handlePathKeyPress(event)">
+                        <button class="btn btn-secondary" onclick="browseFiles(event)">
+                            Browse
                         </button>
-                        <button class="btn btn-secondary" onclick="selectFolder(event)">
-                            Select Folder
+                        <button class="btn btn-primary" onclick="addByPath(event)">
+                            Add
                         </button>
                     </div>
-                    <input type="file" id="fileInput" multiple accept="video/*" style="display: none;">
-                    <input type="file" id="folderInput" webkitdirectory style="display: none;">
                 </div>
 
                 <div class="upload-progress" id="uploadProgress" style="display: none;"></div>
@@ -858,13 +823,10 @@
             await checkAnalysisStatus();
             await loadScenes();
 
-            // Show drop zone if no videos loaded
+            // Show add panel if no videos loaded
             if (videos.length === 0) {
-                showDropZone();
+                showAddPanel();
             }
-
-            // Setup drag & drop handlers
-            setupDragDrop();
 
             // Show queue panel if there are videos
             if (videos.length >= 1) {
@@ -875,163 +837,91 @@
             startQueuePolling();
         }
 
-        // ============ Drag & Drop Functions ============
+        // ============ Add Videos Functions ============
 
         let previousAnalysisStatus = {};  // Track previous status to detect changes
 
-        function showDropZone() {
-            dropZoneVisible = true;
-            document.getElementById('dropZone').style.display = 'block';
+        function showAddPanel() {
+            document.getElementById('addVideosPanel').style.display = 'block';
             document.getElementById('loading').style.display = 'none';
             document.getElementById('scenesGrid').style.display = 'none';
         }
 
-        function hideDropZone() {
-            dropZoneVisible = false;
-            document.getElementById('dropZone').style.display = 'none';
+        function hideAddPanel() {
+            document.getElementById('addVideosPanel').style.display = 'none';
         }
 
-        function setupDragDrop() {
-            const dropZone = document.getElementById('dropZone');
-            const fileInput = document.getElementById('fileInput');
-            const folderInput = document.getElementById('folderInput');
-
-            // Prevent default drag behaviors on document
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                document.body.addEventListener(eventName, preventDefaults, false);
-            });
-
-            // Drop zone events
-            dropZone.addEventListener('dragenter', () => dropZone.classList.add('dragover'), false);
-            dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'), false);
-            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'), false);
-            dropZone.addEventListener('drop', handleDrop, false);
-            dropZone.addEventListener('click', (e) => {
-                if (e.target.tagName !== 'BUTTON') {
-                    fileInput.click();
-                }
-            });
-
-            // File input change
-            fileInput.addEventListener('change', (e) => {
-                handleFiles(e.target.files);
-            });
-
-            // Folder input change
-            folderInput.addEventListener('change', (e) => {
-                handleFiles(e.target.files);
-            });
+        function handlePathKeyPress(e) {
+            if (e.key === 'Enter') {
+                addByPath(e);
+            }
         }
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        async function addByPath(e) {
+            if (e) e.stopPropagation();
 
-        function handleDrop(e) {
-            const dropZone = document.getElementById('dropZone');
-            dropZone.classList.remove('dragover');
+            const pathInput = document.getElementById('pathInput');
+            const path = pathInput.value.trim();
 
-            const dt = e.dataTransfer;
-            const files = dt.files;
-
-            handleFiles(files);
-        }
-
-        function selectFiles(e) {
-            e.stopPropagation();
-            document.getElementById('fileInput').click();
-        }
-
-        function selectFolder(e) {
-            e.stopPropagation();
-            document.getElementById('folderInput').click();
-        }
-
-        async function handleFiles(files) {
-            // Filter video files
-            const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv'];
-            const videoFiles = Array.from(files).filter(file => {
-                const ext = '.' + file.name.split('.').pop().toLowerCase();
-                return videoExtensions.includes(ext);
-            });
-
-            if (videoFiles.length === 0) {
-                showToast('No video files found. Supported formats: MP4, MKV, AVI, MOV, WEBM, FLV, WMV', 'error');
+            if (!path) {
+                showToast('Please enter a file or folder path', 'error');
                 return;
             }
 
-            // Upload files
-            const progressDiv = document.getElementById('uploadProgress');
-            progressDiv.style.display = 'block';
-            progressDiv.innerHTML = '<h3 style="margin-bottom: 15px;">Uploading Videos</h3>';
+            try {
+                const response = await fetch('/api/add_path', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path }),
+                });
 
-            let uploaded = 0;
-            let failed = 0;
+                const result = await response.json();
 
-            for (const file of videoFiles) {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'upload-item';
-                itemDiv.innerHTML = `
-                    <div class="upload-item-icon">📹</div>
-                    <div class="upload-item-info">
-                        <div class="upload-item-name">${file.name}</div>
-                        <div class="upload-item-progress">
-                            <div class="upload-item-progress-bar" style="width: 0%"></div>
-                        </div>
-                    </div>
-                `;
-                progressDiv.appendChild(itemDiv);
+                if (result.success) {
+                    // Clear input
+                    pathInput.value = '';
 
-                const progressBar = itemDiv.querySelector('.upload-item-progress-bar');
-
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    const response = await fetch('/api/upload', {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        progressBar.style.width = '100%';
-                        progressBar.style.background = '#28a745';
-                        uploaded++;
-                    } else {
-                        throw new Error(result.error || 'Upload failed');
-                    }
-                } catch (error) {
-                    progressBar.style.width = '100%';
-                    progressBar.style.background = '#e94560';
-                    itemDiv.querySelector('.upload-item-name').textContent += ` - Error: ${error.message}`;
-                    failed++;
-                }
-            }
-
-            // Show summary
-            setTimeout(async () => {
-                progressDiv.innerHTML = `
-                    <div class="instructions" style="background: ${failed > 0 ? '#3a0f0f' : '#0f3a0f'};">
-                        <h3>${failed > 0 ? '⚠️ Upload Complete with Errors' : '✅ Upload Complete'}</h3>
-                        <p>${uploaded} video(s) uploaded successfully${failed > 0 ? `, ${failed} failed` : ''}</p>
-                        <p style="color: #888; margin-top: 10px;">Analyzing videos in background...</p>
-                    </div>
-                `;
-
-                // Reload videos and start analysis
-                await loadVideos();
-                await checkAnalysisStatus();
-                if (videos.length > 0) {
-                    hideDropZone();
-                    document.getElementById('loading').style.display = 'block';
-                    document.getElementById('loadingText').textContent = 'Analyzing uploaded videos...';
-                    // Show queue panel
+                    // Reload videos and start analysis
+                    await loadVideos();
+                    await checkAnalysisStatus();
                     document.getElementById('queuePanel').style.display = 'block';
+
+                    // Start polling for analysis updates
+                    startAnalysisPolling();
+                } else {
+                    showToast(result.error, 'error');
                 }
-            }, 500);
+            } catch (error) {
+                showToast(`Failed to add path: ${error.message}`, 'error');
+            }
+        }
+
+        async function browseFiles(e) {
+            if (e) e.stopPropagation();
+            try {
+                const response = await fetch('/api/browse/files');
+                const result = await response.json();
+                if (result.paths && result.paths.length > 0) {
+                    // Add all selected files
+                    for (const path of result.paths) {
+                        await fetch('/api/add_path', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path }),
+                        });
+                    }
+
+                    // Refresh video list and start analysis
+                    await loadVideos();
+                    await checkAnalysisStatus();
+                    document.getElementById('queuePanel').style.display = 'block';
+
+                    // Start polling for analysis updates
+                    startAnalysisPolling();
+                }
+            } catch (error) {
+                showToast('Failed to browse files', 'error');
+            }
         }
 
         async function loadVideosData() {
@@ -1081,6 +971,9 @@
                     startAnalysisPolling();
                 } else if (data.all_completed) {
                     stopAnalysisPolling();
+                    // Hide loading and load scenes when analysis completes
+                    document.getElementById('loading').style.display = 'none';
+                    await loadScenes();
                 }
 
                 // Update video list with status (progress shown in badges)
