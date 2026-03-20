@@ -729,16 +729,6 @@
     <div class="container">
         <div class="main-content">
             <div class="content-left">
-                <div class="info-bar">
-                    <div class="video-info" id="videoInfo">
-                        <span id="videoPath">Loading...</span>
-                        <span id="sceneCount"></span>
-                    </div>
-                    <div>
-                        <span id="selectedCount">0</span> scenes selected
-                    </div>
-                </div>
-
                 <div class="instructions">
                     <h3>How to use</h3>
                     <p>
@@ -779,14 +769,6 @@
                 <div id="loading" class="loading">
                     <div class="loading-spinner"></div>
                     <p id="loadingText">Loading...</p>
-                </div>
-
-                <div id="analyzingNotice" class="instructions" style="display: none; background: #0f3460; border-left: 4px solid #ffc107;">
-                    <h3 style="color: #ffc107;">⏳ Analyzing Videos</h3>
-                    <p>
-                        Videos are being analyzed in the background. You can start working with videos as they become ready.
-                        <span id="analyzingProgress"></span>
-                    </p>
                 </div>
 
                 <div id="scenesGrid" class="scenes-grid" style="display: none;"></div>
@@ -1094,32 +1076,14 @@
                     }
                 }
 
-                // Show/hide analyzing notice
-                const notice = document.getElementById('analyzingNotice');
+                // Start/poll polling based on analysis state
                 if (data.any_analyzing) {
-                    notice.style.display = 'block';
-                    // Find videos being analyzed and show their progress
-                    const analyzingVideos = videos.filter(v => v.analysis_status === 'analyzing');
-                    if (analyzingVideos.length > 0) {
-                        const progressInfo = analyzingVideos.map(v => `${v.name}: ${v.analysis_progress}%`).join(', ');
-                        document.getElementById('analyzingProgress').textContent = progressInfo;
-                    }
-                    // Start polling for status updates
                     startAnalysisPolling();
                 } else if (data.all_completed) {
-                    notice.style.display = 'none';
                     stopAnalysisPolling();
-                } else {
-                    // Some videos might have errors or be pending
-                    const pending = Object.values(data.videos).filter(v => v.status === 'pending').length;
-                    if (pending > 0) {
-                        notice.style.display = 'block';
-                        document.getElementById('analyzingProgress').textContent =
-                            `(${pending} video(s) waiting...)`;
-                    }
                 }
 
-                // Update video list with status
+                // Update video list with status (progress shown in badges)
                 renderVideoList();
 
             } catch (error) {
@@ -1175,7 +1139,8 @@
                 // Analysis status badge
                 let statusBadge = '';
                 if (video.analysis_status === 'analyzing') {
-                    statusBadge = '<span class="video-item-badge" style="background: #ffc107; color: #000;">⏳ Analyzing</span>';
+                    const progress = video.analysis_progress || 0;
+                    statusBadge = `<span class="video-item-badge" style="background: #ffc107; color: #000;">⏳ ${progress}%</span>`;
                 } else if (video.analysis_status === 'error') {
                     statusBadge = '<span class="video-item-badge" style="background: #dc3545;">Error</span>';
                 } else if (video.analysis_status === 'completed' && video.id !== currentVideo && !inQueue) {
@@ -1186,7 +1151,7 @@
                     <div class="video-item-icon">▶</div>
                     <div class="video-item-info">
                         <div class="video-item-name">${video.name}</div>
-                        <div class="video-item-meta">${duration} ${video.resolution || ''} ${sceneInfo}</div>
+                        <div class="video-item-meta">${duration} ${video.resolution || ''} ${sceneInfo}${video.id === currentVideo ? ` | <strong>${selectedScenes.size} selected</strong>` : ''}</div>
                     </div>
                     ${video.id === currentVideo ? '<span class="video-item-badge">Current</span>' : ''}
                     ${inQueue && video.id !== currentVideo ? '<span class="video-item-badge" style="background: #28a745;">Queued</span>' : ''}
@@ -1256,8 +1221,6 @@
                 const data = await response.json();
 
                 scenes = data.scenes || [];
-                document.getElementById('videoPath').textContent = data.video_name || data.video_path || 'Unknown video';
-                document.getElementById('sceneCount').textContent = `${scenes.length} scenes detected`;
 
                 renderScenes();
                 document.getElementById('loading').style.display = 'none';
@@ -1321,9 +1284,10 @@
 
         function updateSelectionCount() {
             const count = selectedScenes.size;
-            document.getElementById('selectedCount').textContent = count;
             document.getElementById('processBtn').disabled = count === 0;
             document.getElementById('addToQueueBtn').disabled = count === 0;
+            // Update video list to show selected count
+            renderVideoList();
         }
 
         function selectAll() {
