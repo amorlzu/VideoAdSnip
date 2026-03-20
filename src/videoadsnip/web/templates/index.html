@@ -884,8 +884,8 @@
             // Setup drag & drop handlers
             setupDragDrop();
 
-            // Show queue panel if multiple videos
-            if (videos.length > 1) {
+            // Show queue panel if there are videos
+            if (videos.length >= 1) {
                 document.getElementById('queuePanel').style.display = 'block';
             }
 
@@ -1046,6 +1046,8 @@
                     hideDropZone();
                     document.getElementById('loading').style.display = 'block';
                     document.getElementById('loadingText').textContent = 'Analyzing uploaded videos...';
+                    // Show queue panel
+                    document.getElementById('queuePanel').style.display = 'block';
                 }
             }, 500);
         }
@@ -1053,8 +1055,8 @@
         async function loadVideosData() {
             await loadQueue();
 
-            // Show queue panel if multiple videos
-            if (videos.length > 1) {
+            // Show queue panel if there are videos
+            if (videos.length >= 1) {
                 document.getElementById('queuePanel').style.display = 'block';
             }
 
