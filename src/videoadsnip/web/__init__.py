@@ -326,7 +326,7 @@ UPLOAD_FOLDER = Path(tempfile.gettempdir()) / "videoadsnip_uploads"
 @app.route("/api/upload", methods=["POST"])
 def upload_video() -> Response:
     """Upload a video file and add it to the processing list."""
-    global video_files, video_hashes, analysis_status
+    global video_files, video_hashes, analysis_status, current_video_hash
 
     if "file" not in request.files:
         return jsonify({"success": False, "error": "No file provided"}), 400
@@ -379,6 +379,10 @@ def upload_video() -> Response:
         daemon=True,
     )
     thread.start()
+
+    # Set as current video if no video is selected
+    if current_video_hash is None:
+        current_video_hash = video_hash
 
     return jsonify({
         "success": True,

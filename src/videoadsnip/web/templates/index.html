@@ -1223,6 +1223,13 @@
 
         async function loadScenes() {
             try {
+                // Check if there's a current video selected
+                if (!currentVideo) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('scenesGrid').style.display = 'none';
+                    return;
+                }
+
                 // Check if current video is still being analyzed
                 const currentVideoData = videos.find(v => v.id === currentVideo);
                 if (currentVideoData && currentVideoData.analysis_status === 'analyzing') {
@@ -1234,9 +1241,17 @@
                 }
 
                 const response = await fetch('/api/scenes');
+
+                // Handle API errors
+                if (!response.ok) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('scenesGrid').style.display = 'none';
+                    return;
+                }
+
                 const data = await response.json();
 
-                scenes = data.scenes;
+                scenes = data.scenes || [];
                 document.getElementById('videoPath').textContent = data.video_name || data.video_path || 'Unknown video';
                 document.getElementById('sceneCount').textContent = `${scenes.length} scenes detected`;
 
