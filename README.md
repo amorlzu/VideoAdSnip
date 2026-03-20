@@ -38,6 +38,17 @@ pip install -e .
 
 ## Usage
 
+### Quick Start (Drag & Drop)
+
+```bash
+videoadsnip
+```
+
+This will:
+1. Launch a web UI at http://127.0.0.1:5000
+2. Show a drop zone where you can drag & drop video files
+3. Analyze videos and allow you to select which scenes are ads
+
 ### Process a Single Video
 
 ```bash
@@ -61,10 +72,10 @@ This will scan all video files in the directory (excluding files ending with `_c
 ### Command Line Options
 
 ```
-videoadsnip [OPTIONS] INPUT
+videoadsnip [OPTIONS] [INPUT]
 
 Arguments:
-  INPUT                 Input video file or directory
+  INPUT                 Input video file or directory (optional - drag & drop in UI if omitted)
 
 Options:
   -o, --output PATH     Output file path (default: input_clean.mp4)

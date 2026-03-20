@@ -52,7 +52,9 @@ def main() -> int:
     parser.add_argument(
         "input",
         type=Path,
-        help="Input video file or directory",
+        nargs="?",
+        default=None,
+        help="Input video file or directory (optional - drag & drop in web UI if omitted)",
     )
     parser.add_argument(
         "-o",
@@ -92,30 +94,36 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    if not args.input.exists():
-        console.print(f"[red]Error:[/red] Input path does not exist: {args.input}")
-        return 1
-
-    # Scan for video files
-    video_files = scan_video_files(args.input)
-
-    if not video_files:
-        console.print(f"[red]Error:[/red] No video files found in: {args.input}")
-        return 1
-
     console.print(f"[bold blue]VideoAdSnip[/bold blue] v{__import__('videoadsnip').__version__}")
-    console.print(f"Found {len(video_files)} video(s)")
 
-    if args.verbose:
-        for vf in video_files:
-            console.print(f"  - {vf}")
+    video_files = []
 
-    console.print(f"Detection window: {args.window}s")
+    # If input is provided, scan for videos
+    if args.input:
+        if not args.input.exists():
+            console.print(f"[red]Error:[/red] Input path does not exist: {args.input}")
+            return 1
+
+        video_files = scan_video_files(args.input)
+
+        if not video_files:
+            console.print(f"[red]Error:[/red] No video files found in: {args.input}")
+            return 1
+
+        console.print(f"Found {len(video_files)} video(s)")
+
+        if args.verbose:
+            for vf in video_files:
+                console.print(f"  - {vf}")
+
+        console.print(f"Detection window: {args.window}s")
+    else:
+        console.print("No input provided. Drag & drop videos in the web UI.")
 
     # Interactive mode: launch web UI
     console.print(f"\nLaunching web UI at [bold]http://127.0.0.1:{args.port}[/bold]")
 
-    # Initialize and run web app with multiple videos
+    # Initialize and run web app with videos (can be empty list)
     from videoadsnip.web import init_app_with_videos, run_server
 
     init_app_with_videos(video_files, duration=args.window)
