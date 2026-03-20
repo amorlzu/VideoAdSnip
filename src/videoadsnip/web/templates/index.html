@@ -1178,6 +1178,8 @@
                     statusBadge = '<span class="video-item-badge" style="background: #ffc107; color: #000;">⏳ Analyzing</span>';
                 } else if (video.analysis_status === 'error') {
                     statusBadge = '<span class="video-item-badge" style="background: #dc3545;">Error</span>';
+                } else if (video.analysis_status === 'completed' && video.id !== currentVideo && !inQueue) {
+                    statusBadge = '<span class="video-item-badge" style="background: #17a2b8;">Ready</span>';
                 }
 
                 item.innerHTML = `
