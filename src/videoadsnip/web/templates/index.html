@@ -75,6 +75,102 @@
             line-height: 1.6;
         }
 
+        /* Drop Zone Styles */
+        .drop-zone {
+            border: 3px dashed #0f3460;
+            border-radius: 16px;
+            padding: 60px 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(15, 52, 96, 0.3);
+        }
+
+        .drop-zone:hover {
+            border-color: #e94560;
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .drop-zone.dragover {
+            border-color: #28a745;
+            background: rgba(40, 167, 69, 0.2);
+            transform: scale(1.02);
+        }
+
+        .drop-zone-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone h2 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .drop-zone p {
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone-hint {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .drop-zone-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .drop-zone .btn {
+            padding: 12px 24px;
+        }
+
+        .upload-progress {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .upload-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .upload-item-icon {
+            margin-right: 15px;
+            font-size: 24px;
+        }
+
+        .upload-item-info {
+            flex: 1;
+        }
+
+        .upload-item-name {
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .upload-item-progress {
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .upload-item-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            transition: width 0.3s;
+        }
+
         .scenes-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -440,6 +536,188 @@
             border-radius: 10px;
             font-size: 11px;
         }
+
+        /* Queue Styles */
+        .queue-container {
+            background: #16213e;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #0f3460;
+        }
+
+        .queue-header h3 {
+            margin: 0;
+            color: #28a745;
+            font-size: 16px;
+        }
+
+        .queue-count {
+            background: #28a745;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .queue-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+
+        .queue-item-info {
+            flex: 1;
+        }
+
+        .queue-item-name {
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .queue-item-meta {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .queue-item-status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+
+        .queue-item-status.pending {
+            background: #0f3460;
+            color: #888;
+        }
+
+        .queue-item-status.processing {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .queue-item-status.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .queue-item-status.error {
+            background: #e94560;
+            color: white;
+        }
+
+        .queue-item-remove {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            padding: 5px 10px;
+            margin-left: 10px;
+            font-size: 18px;
+        }
+
+        .queue-item-remove:hover {
+            color: #e94560;
+        }
+
+        .queue-actions {
+            padding: 15px 20px;
+            background: #0a0a0a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-queue {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-queue:hover {
+            background: #34c759;
+        }
+
+        .btn-queue:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        .queue-empty {
+            padding: 30px 20px;
+            text-align: center;
+            color: #888;
+        }
+
+        .queue-progress {
+            padding: 10px 20px;
+            background: #0a0a0a;
+            border-top: 1px solid #0f3460;
+        }
+
+        .queue-progress-bar {
+            background: #1a1a2e;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+        }
+
+        .queue-progress-fill {
+            background: linear-gradient(90deg, #28a745, #34c759);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .queue-progress-text {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        /* Two-column layout for queue mode */
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+
+        .content-left {
+            flex: 1;
+        }
+
+        .content-right {
+            width: 350px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .content-right {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -449,46 +727,104 @@
     </div>
 
     <div class="container">
-        <div class="info-bar">
-            <div class="video-info" id="videoInfo">
-                <span id="videoPath">Loading...</span>
-                <span id="sceneCount"></span>
+        <div class="main-content">
+            <div class="content-left">
+                <div class="info-bar">
+                    <div class="video-info" id="videoInfo">
+                        <span id="videoPath">Loading...</span>
+                        <span id="sceneCount"></span>
+                    </div>
+                    <div>
+                        <span id="selectedCount">0</span> scenes selected
+                    </div>
+                </div>
+
+                <div class="instructions">
+                    <h3>How to use</h3>
+                    <p>
+                        Click on scenes that are advertisements to select them. Selected scenes will be highlighted in red.
+                        Add videos to the queue for batch processing, or process immediately.
+                    </p>
+                </div>
+
+                <!-- Drop Zone for Adding Videos -->
+                <div class="drop-zone" id="dropZone" style="display: none;">
+                    <div class="drop-zone-icon">📁</div>
+                    <h2>Drop Videos Here</h2>
+                    <p>or click to select files</p>
+                    <div class="drop-zone-hint">Supported formats: MP4, MKV, AVI, MOV, WEBM, FLV, WMV</div>
+                    <div class="drop-zone-buttons">
+                        <button class="btn btn-primary" onclick="selectFiles(event)">
+                            Select Files
+                        </button>
+                        <button class="btn btn-secondary" onclick="selectFolder(event)">
+                            Select Folder
+                        </button>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept="video/*" style="display: none;">
+                    <input type="file" id="folderInput" webkitdirectory style="display: none;">
+                </div>
+
+                <div class="upload-progress" id="uploadProgress" style="display: none;"></div>
+
+                <!-- Video List -->
+                <div class="video-list-container" id="videoListContainer" style="display: none;">
+                    <div class="video-list-header" onclick="toggleVideoList()">
+                        <h3>📁 Video List (<span id="videoCount">0</span> videos)</h3>
+                        <span class="video-list-toggle" id="videoListToggle">▼</span>
+                    </div>
+                    <div class="video-list" id="videoList"></div>
+                </div>
+
+                <div id="loading" class="loading">
+                    <div class="loading-spinner"></div>
+                    <p id="loadingText">Loading...</p>
+                </div>
+
+                <div id="analyzingNotice" class="instructions" style="display: none; background: #0f3460; border-left: 4px solid #ffc107;">
+                    <h3 style="color: #ffc107;">⏳ Analyzing Videos</h3>
+                    <p>
+                        Videos are being analyzed in the background. You can start working with videos as they become ready.
+                        <span id="analyzingProgress"></span>
+                    </p>
+                </div>
+
+                <div id="scenesGrid" class="scenes-grid" style="display: none;"></div>
             </div>
-            <div>
-                <span id="selectedCount">0</span> scenes selected
+
+            <div class="content-right" id="queuePanel" style="display: none;">
+                <div class="queue-container">
+                    <div class="queue-header">
+                        <h3>📋 Processing Queue<span class="queue-count" id="queueCount">0</span></h3>
+                    </div>
+                    <div class="queue-list" id="queueList">
+                        <div class="queue-empty">No videos in queue</div>
+                    </div>
+                    <div class="queue-progress" id="queueProgress" style="display: none;">
+                        <div class="queue-progress-bar">
+                            <div class="queue-progress-fill" id="queueProgressFill"></div>
+                        </div>
+                        <div class="queue-progress-text" id="queueProgressText">0 / 0</div>
+                    </div>
+                    <div class="queue-actions">
+                        <button class="btn btn-secondary" onclick="clearQueue()">Clear All</button>
+                        <button class="btn btn-queue" id="startQueueBtn" onclick="startQueue()" disabled>
+                            Start Queue
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div class="instructions">
-            <h3>How to use</h3>
-            <p>
-                Click on scenes that are advertisements to select them. Selected scenes will be highlighted in red.
-                When done, click "Remove Selected Scenes" to create a clean version of your video.
-            </p>
-        </div>
-
-        <!-- Video List -->
-        <div class="video-list-container" id="videoListContainer" style="display: none;">
-            <div class="video-list-header" onclick="toggleVideoList()">
-                <h3>📁 Video List (<span id="videoCount">0</span> videos)</h3>
-                <span class="video-list-toggle" id="videoListToggle">▼</span>
-            </div>
-            <div class="video-list" id="videoList"></div>
-        </div>
-
-        <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
-            <p>Analyzing video and detecting scenes...</p>
-        </div>
-
-        <div id="scenesGrid" class="scenes-grid" style="display: none;"></div>
     </div>
 
     <div class="actions">
         <button class="btn btn-secondary" onclick="selectAll()">Select All</button>
         <button class="btn btn-secondary" onclick="clearSelection()">Clear Selection</button>
         <button class="btn btn-primary" id="processBtn" onclick="processVideo()" disabled>
-            Remove Selected Scenes<span class="selection-count" id="selectionCount">0</span>
+            Remove Now
+        </button>
+        <button class="btn btn-queue" id="addToQueueBtn" onclick="addToQueue()" disabled>
+            Add to Queue
         </button>
     </div>
 
@@ -508,19 +844,222 @@
         </div>
     </div>
 
+    <!-- Queue Progress Modal -->
+    <div class="progress-modal" id="queueModal">
+        <div class="progress-content">
+            <h3>Processing Queue</h3>
+            <p id="queueModalStatus">Processing videos...</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="queueModalBar"></div>
+            </div>
+            <div class="progress-status" id="queueModalProgress">0 / 0</div>
+            <div id="queueModalResult"></div>
+            <button class="close-btn" id="queueCloseBtn" style="display: none;" onclick="closeQueueModal()">Close</button>
+        </div>
+    </div>
+
     <script>
         let scenes = [];
         let selectedScenes = new Set();
         let videos = [];
         let currentVideo = null;
         let videoListCollapsed = false;
+        let queueItems = [];
+        let queuePollInterval = null;
+        let analysisPollInterval = null;
 
         // Load on page load
         document.addEventListener('DOMContentLoaded', init);
 
         async function init() {
             await loadVideos();
+            await checkAnalysisStatus();
             await loadScenes();
+
+            // Show drop zone if no videos loaded
+            if (videos.length === 0) {
+                showDropZone();
+            }
+
+            // Setup drag & drop handlers
+            setupDragDrop();
+
+            // Show queue panel if multiple videos
+            if (videos.length > 1) {
+                document.getElementById('queuePanel').style.display = 'block';
+            }
+
+            // Start polling for queue updates if processing
+            startQueuePolling();
+        }
+
+        // ============ Drag & Drop Functions ============
+
+        let previousAnalysisStatus = {};  // Track previous status to detect changes
+
+        function showDropZone() {
+            dropZoneVisible = true;
+            document.getElementById('dropZone').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('scenesGrid').style.display = 'none';
+        }
+
+        function hideDropZone() {
+            dropZoneVisible = false;
+            document.getElementById('dropZone').style.display = 'none';
+        }
+
+        function setupDragDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const folderInput = document.getElementById('folderInput');
+
+            // Prevent default drag behaviors on document
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            // Drop zone events
+            dropZone.addEventListener('dragenter', () => dropZone.classList.add('dragover'), false);
+            dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'), false);
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'), false);
+            dropZone.addEventListener('drop', handleDrop, false);
+            dropZone.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'BUTTON') {
+                    fileInput.click();
+                }
+            });
+
+            // File input change
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+
+            // Folder input change
+            folderInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function handleDrop(e) {
+            const dropZone = document.getElementById('dropZone');
+            dropZone.classList.remove('dragover');
+
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            handleFiles(files);
+        }
+
+        function selectFiles(e) {
+            e.stopPropagation();
+            document.getElementById('fileInput').click();
+        }
+
+        function selectFolder(e) {
+            e.stopPropagation();
+            document.getElementById('folderInput').click();
+        }
+
+        async function handleFiles(files) {
+            // Filter video files
+            const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv'];
+            const videoFiles = Array.from(files).filter(file => {
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                return videoExtensions.includes(ext);
+            });
+
+            if (videoFiles.length === 0) {
+                showToast('No video files found. Supported formats: MP4, MKV, AVI, MOV, WEBM, FLV, WMV', 'error');
+                return;
+            }
+
+            // Upload files
+            const progressDiv = document.getElementById('uploadProgress');
+            progressDiv.style.display = 'block';
+            progressDiv.innerHTML = '<h3 style="margin-bottom: 15px;">Uploading Videos</h3>';
+
+            let uploaded = 0;
+            let failed = 0;
+
+            for (const file of videoFiles) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'upload-item';
+                itemDiv.innerHTML = `
+                    <div class="upload-item-icon">📹</div>
+                    <div class="upload-item-info">
+                        <div class="upload-item-name">${file.name}</div>
+                        <div class="upload-item-progress">
+                            <div class="upload-item-progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                `;
+                progressDiv.appendChild(itemDiv);
+
+                const progressBar = itemDiv.querySelector('.upload-item-progress-bar');
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        progressBar.style.width = '100%';
+                        progressBar.style.background = '#28a745';
+                        uploaded++;
+                    } else {
+                        throw new Error(result.error || 'Upload failed');
+                    }
+                } catch (error) {
+                    progressBar.style.width = '100%';
+                    progressBar.style.background = '#e94560';
+                    itemDiv.querySelector('.upload-item-name').textContent += ` - Error: ${error.message}`;
+                    failed++;
+                }
+            }
+
+            // Show summary
+            setTimeout(async () => {
+                progressDiv.innerHTML = `
+                    <div class="instructions" style="background: ${failed > 0 ? '#3a0f0f' : '#0f3a0f'};">
+                        <h3>${failed > 0 ? '⚠️ Upload Complete with Errors' : '✅ Upload Complete'}</h3>
+                        <p>${uploaded} video(s) uploaded successfully${failed > 0 ? `, ${failed} failed` : ''}</p>
+                        <p style="color: #888; margin-top: 10px;">Analyzing videos in background...</p>
+                    </div>
+                `;
+
+                // Reload videos and start analysis
+                await loadVideos();
+                await checkAnalysisStatus();
+                if (videos.length > 0) {
+                    hideDropZone();
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('loadingText').textContent = 'Analyzing uploaded videos...';
+                }
+            }, 500);
+        }
+
+        async function loadVideosData() {
+            await loadQueue();
+
+            // Show queue panel if multiple videos
+            if (videos.length > 1) {
+                document.getElementById('queuePanel').style.display = 'block';
+            }
+
+            // Start polling for queue updates if processing
+            startQueuePolling();
         }
 
         async function loadVideos() {
@@ -539,6 +1078,83 @@
             }
         }
 
+        async function checkAnalysisStatus() {
+            try {
+                const response = await fetch('/api/analysis/status');
+                const data = await response.json();
+
+                // Update the videos array with latest analysis status
+                for (const video of videos) {
+                    if (data.videos[video.id]) {
+                        video.analysis_status = data.videos[video.id].status;
+                        video.analysis_progress = data.videos[video.id].progress;
+                        video.scene_count = data.videos[video.id].scene_count;
+                    }
+                }
+
+                // Show/hide analyzing notice
+                const notice = document.getElementById('analyzingNotice');
+                if (data.any_analyzing) {
+                    notice.style.display = 'block';
+                    // Find videos being analyzed and show their progress
+                    const analyzingVideos = videos.filter(v => v.analysis_status === 'analyzing');
+                    if (analyzingVideos.length > 0) {
+                        const progressInfo = analyzingVideos.map(v => `${v.name}: ${v.analysis_progress}%`).join(', ');
+                        document.getElementById('analyzingProgress').textContent = progressInfo;
+                    }
+                    // Start polling for status updates
+                    startAnalysisPolling();
+                } else if (data.all_completed) {
+                    notice.style.display = 'none';
+                    stopAnalysisPolling();
+                } else {
+                    // Some videos might have errors or be pending
+                    const pending = Object.values(data.videos).filter(v => v.status === 'pending').length;
+                    if (pending > 0) {
+                        notice.style.display = 'block';
+                        document.getElementById('analyzingProgress').textContent =
+                            `(${pending} video(s) waiting...)`;
+                    }
+                }
+
+                // Update video list with status
+                renderVideoList();
+
+            } catch (error) {
+                console.error('Error checking analysis status:', error);
+            }
+        }
+
+        function startAnalysisPolling() {
+            if (analysisPollInterval) return;
+
+            analysisPollInterval = setInterval(async () => {
+                await checkAnalysisStatus();
+
+                // Only reload scenes if current video's status CHANGED from analyzing to completed
+                const currentVideoData = videos.find(v => v.id === currentVideo);
+                if (currentVideoData) {
+                    const prevStatus = previousAnalysisStatus[currentVideo];
+                    const currStatus = currentVideoData.analysis_status;
+
+                    // Update tracked status
+                    previousAnalysisStatus[currentVideo] = currStatus;
+
+                    // Only reload if status changed from analyzing to completed
+                    if (prevStatus === 'analyzing' && currStatus === 'completed') {
+                        await loadScenes();
+                    }
+                }
+            }, 2000);
+        }
+
+        function stopAnalysisPolling() {
+            if (analysisPollInterval) {
+                clearInterval(analysisPollInterval);
+                analysisPollInterval = null;
+            }
+        }
+
         function renderVideoList() {
             const list = document.getElementById('videoList');
             list.innerHTML = '';
@@ -551,6 +1167,17 @@
                 const duration = formatDuration(video.duration || 0);
                 const sceneInfo = video.scene_count ? `${video.scene_count} scenes` : '';
 
+                // Check if video is in queue
+                const inQueue = queueItems.some(q => q.video_hash === video.id);
+
+                // Analysis status badge
+                let statusBadge = '';
+                if (video.analysis_status === 'analyzing') {
+                    statusBadge = '<span class="video-item-badge" style="background: #ffc107; color: #000;">⏳ Analyzing</span>';
+                } else if (video.analysis_status === 'error') {
+                    statusBadge = '<span class="video-item-badge" style="background: #dc3545;">Error</span>';
+                }
+
                 item.innerHTML = `
                     <div class="video-item-icon">▶</div>
                     <div class="video-item-info">
@@ -558,6 +1185,8 @@
                         <div class="video-item-meta">${duration} ${video.resolution || ''} ${sceneInfo}</div>
                     </div>
                     ${video.id === currentVideo ? '<span class="video-item-badge">Current</span>' : ''}
+                    ${inQueue && video.id !== currentVideo ? '<span class="video-item-badge" style="background: #28a745;">Queued</span>' : ''}
+                    ${statusBadge}
                 `;
                 list.appendChild(item);
             });
@@ -573,7 +1202,14 @@
 
         async function selectVideo(videoId) {
             try {
-                const response = await fetch(`/api/select/${encodeURIComponent(videoId)}`, { method: 'POST' });
+                // Check if video is still being analyzed
+                const video = videos.find(v => v.id === videoId);
+                if (video && video.analysis_status === 'analyzing') {
+                    showToast('Video is still being analyzed, please wait...', 'error');
+                    return;
+                }
+
+                const response = await fetch(`/api/select/${videoId}`, { method: 'POST' });
                 if (response.ok) {
                     currentVideo = videoId;
                     selectedScenes.clear();
@@ -587,6 +1223,16 @@
 
         async function loadScenes() {
             try {
+                // Check if current video is still being analyzed
+                const currentVideoData = videos.find(v => v.id === currentVideo);
+                if (currentVideoData && currentVideoData.analysis_status === 'analyzing') {
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('loadingText').textContent =
+                        `Analyzing ${currentVideoData.name}... (${currentVideoData.analysis_progress}%)`;
+                    document.getElementById('scenesGrid').style.display = 'none';
+                    return;
+                }
+
                 const response = await fetch('/api/scenes');
                 const data = await response.json();
 
@@ -610,7 +1256,8 @@
 
             scenes.forEach((scene, index) => {
                 const card = document.createElement('div');
-                card.className = 'scene-card';
+                // Preserve selection state from selectedScenes set
+                card.className = 'scene-card' + (selectedScenes.has(index) ? ' selected' : '');
                 card.dataset.index = index;
                 card.onclick = () => toggleScene(index);
 
@@ -656,8 +1303,8 @@
         function updateSelectionCount() {
             const count = selectedScenes.size;
             document.getElementById('selectedCount').textContent = count;
-            document.getElementById('selectionCount').textContent = count;
             document.getElementById('processBtn').disabled = count === 0;
+            document.getElementById('addToQueueBtn').disabled = count === 0;
         }
 
         function selectAll() {
@@ -675,6 +1322,208 @@
             });
             updateSelectionCount();
         }
+
+        // ============ Queue Functions ============
+
+        async function loadQueue() {
+            try {
+                const response = await fetch('/api/queue');
+                const data = await response.json();
+                queueItems = data.items || [];
+                renderQueue(data);
+
+                // Update start button
+                document.getElementById('startQueueBtn').disabled =
+                    queueItems.length === 0 || data.is_processing;
+
+                return data;
+            } catch (error) {
+                console.error('Error loading queue:', error);
+                return null;
+            }
+        }
+
+        function renderQueue(data) {
+            const list = document.getElementById('queueList');
+            const items = data.items || [];
+
+            if (items.length === 0) {
+                list.innerHTML = '<div class="queue-empty">No videos in queue</div>';
+                document.getElementById('queueCount').textContent = '0';
+                document.getElementById('queueProgress').style.display = 'none';
+                return;
+            }
+
+            list.innerHTML = items.map((item, index) => `
+                <div class="queue-item">
+                    <div class="queue-item-info">
+                        <div class="queue-item-name">${item.video_name}</div>
+                        <div class="queue-item-meta">${item.ad_scene_count} scene(s) to remove</div>
+                    </div>
+                    <span class="queue-item-status ${item.status}">${item.status}</span>
+                    ${item.status === 'pending' ? `<button class="queue-item-remove" onclick="removeFromQueue(${index})">×</button>` : ''}
+                </div>
+            `).join('');
+
+            document.getElementById('queueCount').textContent = items.length;
+
+            // Show progress if processing
+            if (data.is_processing) {
+                document.getElementById('queueProgress').style.display = 'block';
+                document.getElementById('queueProgressFill').style.width = data.progress + '%';
+                document.getElementById('queueProgressText').textContent =
+                    `${data.current_index + 1} / ${items.length}`;
+            } else {
+                document.getElementById('queueProgress').style.display = 'none';
+            }
+
+            // Update video list to show queued status
+            if (videos.length > 1) {
+                renderVideoList();
+            }
+        }
+
+        async function addToQueue() {
+            if (selectedScenes.size === 0) return;
+
+            try {
+                const response = await fetch('/api/queue/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ad_scenes: Array.from(selectedScenes),
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(`Added to queue (${data.queue_length} videos)`, 'success');
+                    clearSelection();
+                    await loadQueue();
+
+                    // Auto-advance to next video
+                    if (data.next_video) {
+                        await selectVideo(data.next_video);
+                    }
+                } else {
+                    showToast(data.error || 'Failed to add to queue', 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function removeFromQueue(index) {
+            try {
+                const response = await fetch(`/api/queue/${index}`, { method: 'DELETE' });
+                const data = await response.json();
+
+                if (data.success) {
+                    await loadQueue();
+                    showToast('Removed from queue', 'success');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function clearQueue() {
+            try {
+                const response = await fetch('/api/queue/clear', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    await loadQueue();
+                    showToast('Queue cleared', 'success');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function startQueue() {
+            try {
+                const response = await fetch('/api/queue/start', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('startQueueBtn').disabled = true;
+                    showQueueModal(data.total);
+                    startQueuePolling();
+                } else {
+                    showToast(data.error || 'Failed to start queue', 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showQueueModal(total) {
+            document.getElementById('queueModal').classList.add('show');
+            document.getElementById('queueModalBar').style.width = '0%';
+            document.getElementById('queueModalProgress').textContent = `0 / ${total}`;
+            document.getElementById('queueModalResult').innerHTML = '';
+            document.getElementById('queueCloseBtn').style.display = 'none';
+        }
+
+        function closeQueueModal() {
+            document.getElementById('queueModal').classList.remove('show');
+            stopQueuePolling();
+            loadQueue();
+        }
+
+        function startQueuePolling() {
+            if (queuePollInterval) return;
+
+            queuePollInterval = setInterval(async () => {
+                const data = await loadQueue();
+                if (data && data.is_processing) {
+                    // Update modal if open
+                    if (document.getElementById('queueModal').classList.contains('show')) {
+                        document.getElementById('queueModalBar').style.width = data.progress + '%';
+                        document.getElementById('queueModalProgress').textContent =
+                            `${data.current_index + 1} / ${data.total}`;
+                    }
+                } else if (data && !data.is_processing) {
+                    // Queue finished
+                    document.getElementById('startQueueBtn').disabled = data.items.length === 0;
+
+                    // Update modal if open
+                    if (document.getElementById('queueModal').classList.contains('show')) {
+                        const completed = data.items.filter(i => i.status === 'completed').length;
+                        const errors = data.items.filter(i => i.status === 'error').length;
+
+                        document.getElementById('queueModalBar').style.width = '100%';
+                        document.getElementById('queueModalProgress').textContent =
+                            `${completed} completed, ${errors} failed`;
+
+                        let resultHtml = '';
+                        if (errors > 0) {
+                            resultHtml = `<div class="progress-error">Completed with ${errors} error(s)</div>`;
+                            data.items.filter(i => i.status === 'error').forEach(item => {
+                                resultHtml += `<div style="color: #888; font-size: 12px; margin-top: 5px;">${item.video_name}: ${item.error_message}</div>`;
+                            });
+                        } else {
+                            resultHtml = `<div class="progress-success">All ${completed} video(s) processed successfully!</div>`;
+                        }
+                        document.getElementById('queueModalResult').innerHTML = resultHtml;
+                        document.getElementById('queueCloseBtn').style.display = 'inline-block';
+                    }
+
+                    stopQueuePolling();
+                }
+            }, 1000);
+        }
+
+        function stopQueuePolling() {
+            if (queuePollInterval) {
+                clearInterval(queuePollInterval);
+                queuePollInterval = null;
+            }
+        }
+
+        // ============ Single Video Processing ============
 
         async function processVideo() {
             const btn = document.getElementById('processBtn');
@@ -716,7 +1565,6 @@
             }
 
             btn.disabled = false;
-            btn.innerHTML = 'Remove Selected Scenes<span class="selection-count" id="selectionCount">' + selectedScenes.size + '</span>';
         }
 
         function showProgressModal() {
@@ -751,7 +1599,7 @@
 
             setTimeout(() => {
                 toast.style.display = 'none';
-            }, 5000);
+            }, 3000);
         }
 
         function formatTime(seconds) {

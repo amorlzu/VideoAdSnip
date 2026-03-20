@@ -96,26 +96,36 @@ videoadsnip "path/to/video.mp4" --no-ui
 VideoAdSnip uses a smart encoding approach that achieves frame-accurate cuts while minimizing re-encoding:
 
 ```
-For each segment to keep (start_time → end_time):
+Original video structure (each box = one GOP):
 
-┌─────────────────────────────────────────────────────────────┐
-│  Original video                                             │
-│  ├─keyframe─┼───────┼─keyframe─┼───────┼─keyframe─┼───────┤ │
-│                        ↑                                    │
-│                    start_time                               │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  │←── GOP 1 ──→│←── GOP 2 ──→│←── GOP 3 ──→│←── GOP 4 ──→│       │
+│  │K P P P P P P│K P P P P P P│K P P P P P P│K P P P P P P│ ...   │
+│  └─────────────┴──────┬──────┴─────────────┴─────────────┘       │
+│                       ↑                                          │
+│                  cut point                                       │
+│                  (start_time)                                    │
+└──────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────┐
-│  Smart cut result:                                          │
-│  ├─ Re-encode ─┤├──────── Stream Copy ────────────────────┤ │
-│  (partial GOP)     (from next keyframe to end_time)         │
-└─────────────────────────────────────────────────────────────┘
+Smart cut result:
+
+┌──────────────────────────────────────────────────────────────────┐
+│  │← Re-encode →│←────── Stream Copy (complete GOPs) ────────→│   │
+│  │ (partial)   │   GOP 3          GOP 4          GOP 5  ...  │   │
+│  │K P P P      │K P P P P P P  K P P P P P P  K P P P P P ...│   │
+│  └─────────────┴─────────────┴──────────────┴────────────────┘   │
+│   ↑                                                              │
+│   New keyframe created                                           │
+│   at cut point                                                   │
+└──────────────────────────────────────────────────────────────────┘
+
+K = Keyframe (I-frame)    P = Predicted frame (P/B-frame)
 ```
 
 **How it works:**
-1. **Keyframe Detection**: Analyzes the video to find all keyframe (I-frame) positions
-2. **Partial Re-encoding**: Only re-encodes from the cut point to the next keyframe (typically 1-2 seconds)
-3. **Stream Copy**: Uses direct stream copy for content between keyframes (fast, no quality loss)
+1. **GOP Analysis**: Identifies GOP (Group of Pictures) boundaries - each GOP starts with a keyframe
+2. **Partial Re-encoding**: When cutting inside a GOP, only re-encodes from the cut point to the GOP boundary (typically 1-2 seconds max)
+3. **Stream Copy**: Uses direct stream copy for all complete GOPs after the cut (fast, no quality loss)
 4. **Codec Matching**: Detects and matches the original codec (H.264, HEVC, AAC, etc.) for seamless concatenation
 
 **Benefits:**
