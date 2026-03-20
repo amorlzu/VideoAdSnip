@@ -10,7 +10,7 @@ from typing import Any
 from flask import Flask, Response, jsonify, render_template, request, send_file
 
 from videoadsnip.scene_detector import Scene, SceneDetector
-from videoadsnip.processor import VideoProcessor
+from videoadsnip.processor import VideoProcessor, get_unique_output_path
 
 app = Flask(__name__)
 
@@ -289,8 +289,8 @@ def process_selections() -> Response:
             segments_to_remove.append((scene.start_time, scene.end_time))
 
     if not output_path:
-        # Default output path
-        output_path = str(video_path.with_stem(video_path.stem + "_clean"))
+        # Default output path (auto-increment if exists)
+        output_path = str(get_unique_output_path(video_path))
 
     try:
         processor = VideoProcessor()
@@ -579,8 +579,8 @@ def _process_queue() -> None:
                     scene = scenes[idx]
                     segments_to_remove.append((scene.start_time, scene.end_time))
 
-            # Generate output path
-            output_path = str(video_path.with_stem(video_path.stem + "_clean"))
+            # Generate output path (auto-increment if exists)
+            output_path = str(get_unique_output_path(video_path))
 
             # Process video
             processor = VideoProcessor()

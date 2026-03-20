@@ -7,6 +7,36 @@ from pathlib import Path
 import ffmpeg
 
 
+def get_unique_output_path(video_path: Path) -> Path:
+    """
+    Generate a unique output path for a video.
+
+    If video_clean.mp4 exists, returns video_clean_1.mp4, etc.
+
+    Args:
+        video_path: Path to the original video file
+
+    Returns:
+        Unique output path
+    """
+    stem = video_path.stem
+    suffix = video_path.suffix
+    parent = video_path.parent
+
+    base_output = parent / f"{stem}_clean{suffix}"
+
+    if not base_output.exists():
+        return base_output
+
+    # Find next available number
+    counter = 1
+    while True:
+        output_path = parent / f"{stem}_clean_{counter}{suffix}"
+        if not output_path.exists():
+            return output_path
+        counter += 1
+
+
 class VideoProcessor:
     """Handles video processing operations using ffmpeg."""
 
