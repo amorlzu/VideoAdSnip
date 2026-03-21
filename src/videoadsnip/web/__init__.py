@@ -39,25 +39,26 @@ def _browse_files_macos() -> list[str]:
 
 
 def _browse_files_windows() -> list[str]:
-    """Open file browser on Windows using PowerShell."""
-    script = '''
-    Add-Type -AssemblyName System.Windows.Forms
-    $dialog = New-Object System.Windows.Forms.OpenFileDialog
-    $dialog.Title = "Select Video Files"
-    $dialog.Filter = "Video Files (*.mp4;*.mkv;*.avi;*.mov;*.webm;*.flv;*.wmv)|*.mp4;*.mkv;*.avi;*.mov;*.webm;*.flv;*.wmv|All Files (*.*)|*.*"
-    $dialog.Multiselect = $true
-    if ($dialog.ShowDialog() -eq 'OK') {
-        $dialog.FileNames -join '|'
-    }
-    '''
-    result = subprocess.run(
-        ["powershell", "-Command", script],
-        capture_output=True,
-        text=True,
+    """Open file browser on Windows using tkinter (fast, built-in)."""
+    import tkinter as tk
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    root.call('wm', 'attributes', '.', '-topmost', True)  # Bring dialog to front
+
+    filetypes = [
+        ("Video Files", "*.mp4 *.mkv *.avi *.mov *.webm *.flv *.wmv"),
+        ("All Files", "*.*"),
+    ]
+
+    paths = filedialog.askopenfilenames(
+        title="Select Video Files",
+        filetypes=filetypes,
     )
-    if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.strip().split("|")
-    return []
+
+    root.destroy()
+    return list(paths) if paths else []
 
 app = Flask(__name__)
 
@@ -482,23 +483,20 @@ def _browse_folder_macos() -> str:
 
 
 def _browse_folder_windows() -> str:
-    """Open folder browser on Windows using PowerShell."""
-    script = '''
-    Add-Type -AssemblyName System.Windows.Forms
-    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dialog.Description = "Select Folder Containing Videos"
-    if ($dialog.ShowDialog() -eq 'OK') {
-        $dialog.SelectedPath
-    }
-    '''
-    result = subprocess.run(
-        ["powershell", "-Command", script],
-        capture_output=True,
-        text=True,
+    """Open folder browser on Windows using tkinter (fast, built-in)."""
+    import tkinter as tk
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    root.call('wm', 'attributes', '.', '-topmost', True)  # Bring dialog to front
+
+    path = filedialog.askdirectory(
+        title="Select Folder Containing Videos",
     )
-    if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.strip()
-    return ""
+
+    root.destroy()
+    return path if path else ""
 
 
 @app.route("/api/browse/folder")
